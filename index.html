@@ -7,25 +7,28 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f5; }
-        .data-table { width: 100%; border-collapse: collapse; background: white; font-size: 0.875rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .data-table th, .data-table td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #e5e7eb; }
-        .data-table th { background-color: #ea580c; color: white; font-weight: 700; position: sticky; top: 0; }
+        .data-table { width: 100%; border-collapse: collapse; background: white; font-size: 0.875rem; }
+        .data-table th, .data-table td { padding: 10px 12px; text-align: center; border-bottom: 1px solid #e5e7eb; }
+        .data-table th { background-color: #ea580c; color: white; font-weight: 700; position: sticky; top: 0; z-index: 10; }
         .data-table tr:hover { background-color: #fff7ed; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .sub-tab-content { display: none; }
+        .sub-tab-content.active { display: block; }
         .table-container::-webkit-scrollbar { height: 6px; }
         .table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
     </style>
 </head>
 <body class="text-gray-800">
 
+    <!-- 헤더 -->
     <header class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">🍊</div>
                 <div>
                     <h1 class="text-xl font-black text-gray-900">돌망돌망 <span class="text-orange-600">데이터센터</span></h1>
-                    <p class="text-xs text-gray-500 mt-0.5">제주 감귤류 도매시장 실시간 경매 현황</p>
+                    <p class="text-xs text-gray-500 mt-0.5">제주 특산품 도매시장 실시간 경매 현황</p>
                 </div>
             </div>
             <div class="text-right hidden sm:block">
@@ -35,146 +38,310 @@
                 <p id="update-time" class="text-xs text-gray-400 mt-1">데이터 로딩 중...</p>
             </div>
         </div>
+
+        <!-- 메인 탭 -->
         <div class="max-w-7xl mx-auto px-2 md:px-4">
             <div class="flex">
-                <button onclick="changeTab('tab-top6', this)" class="tab-btn active-tab flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-orange-600 border-b-4 border-orange-500">최고가 TOP6</button>
-                <button onclick="changeTab('tab-daily', this)" class="tab-btn flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-gray-500 border-b-4 border-transparent">일일 리포트</button>
-                <button onclick="changeTab('tab-market', this)" class="tab-btn flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-gray-500 border-b-4 border-transparent">시장별 상세</button>
-                <button onclick="changeTab('tab-trend', this)" class="tab-btn flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-gray-500 border-b-4 border-transparent">월별 추이</button>
-                <button onclick="changeTab('tab-total', this)" class="tab-btn flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-gray-500 border-b-4 border-transparent">전체내역</button>
+                <button onclick="changeTab('tab-mangam', this)" class="tab-btn active-tab flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-orange-600 border-b-4 border-orange-500 bg-orange-50">🍊 만감류</button>
+                <button onclick="changeTab('tab-gamgyul', this)" class="tab-btn flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-gray-500 border-b-4 border-transparent hover:bg-gray-50">🍋 감귤</button>
+                <button onclick="changeTab('tab-hobak', this)" class="tab-btn flex-1 px-2 py-3 font-bold text-xs sm:text-sm text-gray-500 border-b-4 border-transparent hover:bg-gray-50">🎃 제주호박</button>
             </div>
         </div>
     </header>
 
     <div class="max-w-7xl mx-auto px-4 py-6">
 
-        <div id="tab-top6" class="tab-content active">
-            <div class="flex justify-between items-end mb-4">
-                <h2 class="text-lg font-bold">🏆 주요 4대 품목 최고가 랭킹</h2>
-                <span class="text-xs text-gray-500">* 거래량 20박스 이상</span>
+        <!-- ===== 만감류 탭 ===== -->
+        <div id="tab-mangam" class="tab-content active">
+            <div class="flex gap-2 mb-4 flex-wrap">
+                <button onclick="changeSubTab('mangam', 'top6', this)" class="sub-tab-btn active-sub px-4 py-2 rounded-full text-xs font-bold bg-orange-500 text-white">🏆 최고가 TOP6</button>
+                <button onclick="changeSubTab('mangam', 'daily', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📊 일일 리포트</button>
+                <button onclick="changeSubTab('mangam', 'market', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📍 시장별 상세</button>
+                <button onclick="changeSubTab('mangam', 'total', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📋 전체 내역</button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="top6-container"></div>
+
+            <div id="mangam-top6" class="sub-tab-content active">
+                <div class="flex justify-between items-end mb-3">
+                    <h2 class="text-lg font-bold">🏆 만감류 최고가 랭킹</h2>
+                    <span class="text-xs text-gray-400">* 거래량 20박스 이상</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="mangam-top6-container"></div>
+            </div>
+
+            <div id="mangam-daily" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📊 만감류 품종·규격별 일일 리포트</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow">
+                    <table class="data-table">
+                        <thead><tr><th>품종</th><th>규격</th><th>평균 경락가</th><th>최고가</th><th>최저가</th><th>총 거래량</th></tr></thead>
+                        <tbody id="mangam-daily-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="mangam-market" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📍 만감류 시장별 상세</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow">
+                    <table class="data-table">
+                        <thead><tr><th>품종</th><th>도매시장</th><th>평균 경락가</th><th>최고가</th><th>거래량</th></tr></thead>
+                        <tbody id="mangam-market-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="mangam-total" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📋 만감류 전체 거래내역</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow max-h-[600px]">
+                    <table class="data-table">
+                        <thead><tr><th>NO</th><th>품종</th><th>도매시장</th><th>법인</th><th>원산지</th><th>규격</th><th>경락가</th><th>거래량</th><th>낙찰일시</th></tr></thead>
+                        <tbody id="mangam-total-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
-        <div id="tab-daily" class="tab-content">
-            <h2 class="text-lg font-bold mb-4">📊 품종 및 규격별 일일 요약 리포트</h2>
-            <div class="table-container overflow-x-auto rounded-lg shadow">
-                <table class="data-table">
-                    <thead><tr><th>품종</th><th>규격</th><th>평균 경락가</th><th>최고가</th><th>최저가</th><th>총 거래량</th></tr></thead>
-                    <tbody id="daily-tbody"></tbody>
-                </table>
+        <!-- ===== 감귤 탭 ===== -->
+        <div id="tab-gamgyul" class="tab-content">
+            <div class="flex gap-2 mb-4 flex-wrap">
+                <button onclick="changeSubTab('gamgyul', 'top6', this)" class="sub-tab-btn active-sub px-4 py-2 rounded-full text-xs font-bold bg-orange-500 text-white">🏆 최고가 TOP6</button>
+                <button onclick="changeSubTab('gamgyul', 'daily', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📊 일일 리포트</button>
+                <button onclick="changeSubTab('gamgyul', 'market', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📍 시장별 상세</button>
+                <button onclick="changeSubTab('gamgyul', 'total', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📋 전체 내역</button>
+            </div>
+
+            <div id="gamgyul-top6" class="sub-tab-content active">
+                <div class="flex justify-between items-end mb-3">
+                    <h2 class="text-lg font-bold">🏆 감귤 최고가 랭킹</h2>
+                    <span class="text-xs text-gray-400">* 거래량 20박스 이상</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="gamgyul-top6-container"></div>
+            </div>
+
+            <div id="gamgyul-daily" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📊 감귤 품종·규격별 일일 리포트</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow">
+                    <table class="data-table">
+                        <thead><tr><th>품종</th><th>규격</th><th>평균 경락가</th><th>최고가</th><th>최저가</th><th>총 거래량</th></tr></thead>
+                        <tbody id="gamgyul-daily-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="gamgyul-market" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📍 감귤 시장별 상세</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow">
+                    <table class="data-table">
+                        <thead><tr><th>품종</th><th>도매시장</th><th>평균 경락가</th><th>최고가</th><th>거래량</th></tr></thead>
+                        <tbody id="gamgyul-market-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="gamgyul-total" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📋 감귤 전체 거래내역</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow max-h-[600px]">
+                    <table class="data-table">
+                        <thead><tr><th>NO</th><th>품종</th><th>도매시장</th><th>법인</th><th>원산지</th><th>규격</th><th>경락가</th><th>거래량</th><th>낙찰일시</th></tr></thead>
+                        <tbody id="gamgyul-total-tbody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <div id="tab-market" class="tab-content">
-            <h2 class="text-lg font-bold mb-4">📍 도매시장별 상세 분석</h2>
-            <div class="table-container overflow-x-auto rounded-lg shadow">
-                <table class="data-table">
-                    <thead><tr><th>품종</th><th>도매시장</th><th>평균 경락가</th><th>최고가</th><th>거래량</th></tr></thead>
-                    <tbody id="market-tbody"></tbody>
-                </table>
+        <!-- ===== 제주호박 탭 ===== -->
+        <div id="tab-hobak" class="tab-content">
+            <div class="flex gap-2 mb-4 flex-wrap">
+                <button onclick="changeSubTab('hobak', 'top6', this)" class="sub-tab-btn active-sub px-4 py-2 rounded-full text-xs font-bold bg-orange-500 text-white">🏆 최고가 TOP6</button>
+                <button onclick="changeSubTab('hobak', 'daily', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📊 일일 리포트</button>
+                <button onclick="changeSubTab('hobak', 'market', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📍 시장별 상세</button>
+                <button onclick="changeSubTab('hobak', 'total', this)" class="sub-tab-btn px-4 py-2 rounded-full text-xs font-bold bg-gray-200 text-gray-600">📋 전체 내역</button>
             </div>
-        </div>
 
-        <div id="tab-trend" class="tab-content">
-            <h2 class="text-lg font-bold mb-4">📈 당월 시세 추이</h2>
-            <div class="table-container overflow-x-auto rounded-lg shadow">
-                <table class="data-table">
-                    <thead><tr><th>기준일</th><th>품종</th><th>규격</th><th>평균시세</th><th>총 유통량</th></tr></thead>
-                    <tbody id="trend-tbody"></tbody>
-                </table>
+            <div id="hobak-top6" class="sub-tab-content active">
+                <div class="flex justify-between items-end mb-3">
+                    <h2 class="text-lg font-bold">🏆 제주호박 최고가 랭킹</h2>
+                    <span class="text-xs text-gray-400">* 거래량 20박스 이상 / 원산지 제주</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="hobak-top6-container"></div>
             </div>
-        </div>
 
-        <div id="tab-total" class="tab-content">
-            <h2 class="text-lg font-bold mb-4">📋 전체 거래내역</h2>
-            <div class="table-container overflow-x-auto rounded-lg shadow max-h-[600px]">
-                <table class="data-table">
-                    <thead><tr><th>NO</th><th>도매시장</th><th>법인</th><th>품종</th><th>세부품목</th><th>규격</th><th>경락가</th><th>거래량</th></tr></thead>
-                    <tbody id="total-tbody"></tbody>
-                </table>
+            <div id="hobak-daily" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📊 제주호박 품목·규격별 일일 리포트</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow">
+                    <table class="data-table">
+                        <thead><tr><th>품목</th><th>규격</th><th>평균 경락가</th><th>최고가</th><th>최저가</th><th>총 거래량</th></tr></thead>
+                        <tbody id="hobak-daily-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="hobak-market" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📍 제주호박 시장별 상세</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow">
+                    <table class="data-table">
+                        <thead><tr><th>품목</th><th>도매시장</th><th>평균 경락가</th><th>최고가</th><th>거래량</th></tr></thead>
+                        <tbody id="hobak-market-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="hobak-total" class="sub-tab-content">
+                <h2 class="text-lg font-bold mb-3">📋 제주호박 전체 거래내역</h2>
+                <div class="table-container overflow-x-auto rounded-lg shadow max-h-[600px]">
+                    <table class="data-table">
+                        <thead><tr><th>NO</th><th>품목</th><th>도매시장</th><th>법인</th><th>원산지</th><th>규격</th><th>경락가</th><th>거래량</th><th>낙찰일시</th></tr></thead>
+                        <tbody id="hobak-total-tbody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
     </div>
 
     <script>
+        // 메인 탭 전환
         function changeTab(tabId, btn) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('text-orange-600', 'border-orange-500');
+                b.classList.remove('text-orange-600', 'border-orange-500', 'bg-orange-50');
                 b.classList.add('text-gray-500', 'border-transparent');
             });
             btn.classList.remove('text-gray-500', 'border-transparent');
-            btn.classList.add('text-orange-600', 'border-orange-500');
+            btn.classList.add('text-orange-600', 'border-orange-500', 'bg-orange-50');
         }
 
-        fetch('data.json')
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('update-time').innerText = "최종 업데이트: " + data.update_time;
+        // 서브 탭 전환
+        function changeSubTab(category, subId, btn) {
+            document.querySelectorAll(`#tab-${category} .sub-tab-content`).forEach(el => el.classList.remove('active'));
+            document.getElementById(`${category}-${subId}`).classList.add('active');
+            document.querySelectorAll(`#tab-${category} .sub-tab-btn`).forEach(b => {
+                b.classList.remove('bg-orange-500', 'text-white');
+                b.classList.add('bg-gray-200', 'text-gray-600');
+            });
+            btn.classList.remove('bg-gray-200', 'text-gray-600');
+            btn.classList.add('bg-orange-500', 'text-white');
+        }
 
-                let top6Html = '';
-                ['감귤', '한라봉', '레드향', '천혜향'].forEach(fruit => {
-                    let list = data.top6[fruit];
-                    top6Html += `<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        // TOP6 카드 렌더링
+        function renderTop6(containerId, top6Data) {
+            let html = '';
+            const keys = Object.keys(top6Data);
+            if (keys.length === 0) {
+                html = '<div class="col-span-2 text-center py-10 text-gray-400">데이터가 없습니다</div>';
+            } else {
+                keys.forEach(fruit => {
+                    const list = top6Data[fruit] || [];
+                    html += `<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="bg-orange-50 px-4 py-3 border-b border-gray-200">
                             <h3 class="font-black text-gray-800">${fruit}</h3>
                         </div>
                         <div class="table-container overflow-x-auto">
                         <table class="w-full text-xs sm:text-sm text-center">
-                            <thead class="bg-white border-b text-gray-500 text-xs">
-                                <tr><th class="py-2">순위</th><th>시장(법인)</th><th>규격</th><th>가격</th><th>물량</th></tr>
+                            <thead class="bg-white border-b text-gray-400 text-xs">
+                                <tr><th class="py-2">순위</th><th>시장</th><th>규격</th><th>경락가</th><th>거래량</th></tr>
                             </thead><tbody>`;
-                    if (!list || list.length === 0) {
-                        top6Html += `<tr><td colspan="5" class="py-4 text-gray-400">데이터 없음</td></tr>`;
+                    if (list.length === 0) {
+                        html += `<tr><td colspan="5" class="py-4 text-gray-400">데이터 없음</td></tr>`;
                     } else {
                         list.forEach((item, i) => {
-                            let rankColor = i < 3 ? "text-orange-600 font-black" : "text-gray-500 font-bold";
-                            top6Html += `<tr class="border-b border-gray-50 hover:bg-orange-50">
+                            const rankColor = i < 3 ? 'text-orange-600 font-black' : 'text-gray-400 font-bold';
+                            html += `<tr class="border-b border-gray-50 hover:bg-orange-50">
                                 <td class="py-2 ${rankColor}">${i+1}</td>
-                                <td class="text-left px-2"><span class="font-bold">${item['도매시장']}</span><br><span class="text-gray-400 text-xs">${item['법인']}</span></td>
-                                <td>${item['규격']}</td>
+                                <td class="font-bold text-gray-700">${item['도매시장']}</td>
+                                <td class="text-gray-500">${item['규격']}</td>
                                 <td class="font-black text-red-600">${item['경락가'].toLocaleString()}원</td>
-                                <td class="text-gray-600">${item['거래량']}</td>
+                                <td class="text-gray-500">${item['거래량']}박스</td>
                             </tr>`;
                         });
                     }
-                    top6Html += `</tbody></table></div></div>`;
+                    html += `</tbody></table></div></div>`;
                 });
-                document.getElementById('top6-container').innerHTML = top6Html;
+            }
+            document.getElementById(containerId).innerHTML = html;
+        }
 
-                document.getElementById('daily-tbody').innerHTML = data.daily_report.map(r =>
-                    `<tr><td class="font-bold">${r.품종}</td><td>${r.규격}</td>
-                    <td class="font-bold text-blue-600">${r.평균가.toLocaleString()}</td>
-                    <td class="text-red-500">${r.최고가.toLocaleString()}</td>
-                    <td class="text-gray-400">${r.최저가.toLocaleString()}</td>
-                    <td class="font-bold">${r.총거래량.toLocaleString()}</td></tr>`
-                ).join('');
-
-                document.getElementById('market-tbody').innerHTML = data.market_detail.map(r =>
-                    `<tr><td class="font-bold">${r.품종}</td><td>${r.시장명}</td>
-                    <td class="font-bold text-blue-600">${r.평균가.toLocaleString()}</td>
-                    <td class="text-red-500">${r.최고가.toLocaleString()}</td>
-                    <td class="font-bold">${r.총거래량.toLocaleString()}</td></tr>`
-                ).join('');
-
-                const todayStr = data.update_time.split(' ')[0];
-                document.getElementById('trend-tbody').innerHTML = data.monthly_trend.map(r =>
-                    `<tr><td class="text-gray-500">${todayStr}</td><td class="font-bold">${r.품종}</td>
+        // 일일 리포트 렌더링
+        function renderDaily(tbodyId, dailyData) {
+            const el = document.getElementById(tbodyId);
+            if (!dailyData || dailyData.length === 0) {
+                el.innerHTML = '<tr><td colspan="6" class="py-6 text-gray-400">데이터가 없습니다</td></tr>';
+                return;
+            }
+            el.innerHTML = dailyData.map(r =>
+                `<tr>
+                    <td class="font-bold text-gray-800">${r.품종}</td>
                     <td>${r.규격}</td>
                     <td class="font-bold text-blue-600">${r.평균가.toLocaleString()}</td>
-                    <td class="font-bold">${r.총거래량.toLocaleString()}</td></tr>`
-                ).join('');
+                    <td class="text-red-500 font-bold">${r.최고가.toLocaleString()}</td>
+                    <td class="text-gray-400">${r.최저가.toLocaleString()}</td>
+                    <td class="font-bold">${r.총거래량.toLocaleString()}박스</td>
+                </tr>`
+            ).join('');
+        }
 
-                document.getElementById('total-tbody').innerHTML = data.total_history.map((r, i) =>
-                    `<tr><td class="text-gray-400">${i+1}</td><td class="font-bold">${r.도매시장}</td>
-                    <td class="text-gray-500">${r.법인}</td><td class="font-bold">${r.품종}</td>
-                    <td>${r.세부품목}</td><td>${r.규격}</td>
+        // 시장별 렌더링
+        function renderMarket(tbodyId, marketData) {
+            const el = document.getElementById(tbodyId);
+            if (!marketData || marketData.length === 0) {
+                el.innerHTML = '<tr><td colspan="5" class="py-6 text-gray-400">데이터가 없습니다</td></tr>';
+                return;
+            }
+            el.innerHTML = marketData.map(r =>
+                `<tr>
+                    <td class="font-bold text-gray-800">${r.품종}</td>
+                    <td class="font-bold text-gray-600">${r.시장명}</td>
+                    <td class="font-bold text-blue-600">${r.평균가.toLocaleString()}</td>
+                    <td class="text-red-500 font-bold">${r.최고가.toLocaleString()}</td>
+                    <td class="font-bold">${r.총거래량.toLocaleString()}박스</td>
+                </tr>`
+            ).join('');
+        }
+
+        // 전체 내역 렌더링
+        function renderTotal(tbodyId, totalData) {
+            const el = document.getElementById(tbodyId);
+            if (!totalData || totalData.length === 0) {
+                el.innerHTML = '<tr><td colspan="9" class="py-6 text-gray-400">데이터가 없습니다</td></tr>';
+                return;
+            }
+            el.innerHTML = totalData.map((r, i) =>
+                `<tr>
+                    <td class="text-gray-400 text-xs">${i+1}</td>
+                    <td class="font-bold text-gray-800">${r.품종}</td>
+                    <td class="font-bold text-gray-600">${r.도매시장}</td>
+                    <td class="text-gray-500 text-xs">${r.법인}</td>
+                    <td class="text-xs ${r.원산지.includes('제주') ? 'text-orange-600 font-bold' : 'text-gray-400'}">${r.원산지}</td>
+                    <td>${r.규격}</td>
                     <td class="font-black text-red-600">${r.경락가.toLocaleString()}</td>
-                    <td>${r.거래량}</td></tr>`
-                ).join('');
+                    <td class="font-bold">${r.거래량}</td>
+                    <td class="text-gray-400 text-xs">${r.낙찰일시}</td>
+                </tr>`
+            ).join('');
+        }
+
+        // 데이터 로드
+        fetch('data.json')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('update-time').innerText = "최종 업데이트: " + data.update_time;
+
+                // 만감류
+                renderTop6('mangam-top6-container', data.mangam.top6);
+                renderDaily('mangam-daily-tbody', data.mangam.daily_report);
+                renderMarket('mangam-market-tbody', data.mangam.market_detail);
+                renderTotal('mangam-total-tbody', data.mangam.total_history);
+
+                // 감귤
+                renderTop6('gamgyul-top6-container', data.gamgyul.top6);
+                renderDaily('gamgyul-daily-tbody', data.gamgyul.daily_report);
+                renderMarket('gamgyul-market-tbody', data.gamgyul.market_detail);
+                renderTotal('gamgyul-total-tbody', data.gamgyul.total_history);
+
+                // 제주호박
+                renderTop6('hobak-top6-container', data.hobak.top6);
+                renderDaily('hobak-daily-tbody', data.hobak.daily_report);
+                renderMarket('hobak-market-tbody', data.hobak.market_detail);
+                renderTotal('hobak-total-tbody', data.hobak.total_history);
             })
             .catch(() => {
                 document.getElementById('update-time').innerText = "데이터 로딩 대기중...";
