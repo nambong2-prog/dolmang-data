@@ -502,7 +502,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">규격</label>
-                            <select id="c-spec" onchange="calcProfit()" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                            <select id="c-spec" onchange="updateSpecOptions(this.value)" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
                                 <option value="9kg">9kg</option>
                             </select>
                         </div>
@@ -1524,15 +1524,19 @@ function updateSpecOptions(keepSpec){
     const isGamgyul = variety === '감귤';
     const specs = isGamgyul ? SPECS_GAMGYUL : SPECS_DEFAULT;
     const specSel = document.getElementById('c-spec');
-    const cur = keepSpec || specSel.value;
-    specSel.innerHTML = specs.map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
-    if(!specs.includes(cur)) specSel.value = specs[0];
+
+    // keepSpec이 있으면 (규격 직접 선택) → 옵션 목록 재생성 없이 해당값 사용
+    // keepSpec이 없으면 (품종/작업방식 변경) → 옵션 목록 재생성
+    if(!keepSpec){
+        const cur = specSel.value;
+        specSel.innerHTML = specs.map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
+        if(!specs.includes(cur)) specSel.value = specs[0];
+    }
 
     // 규격별 기본값 적용 (천혜향/한라봉/레드향만)
     if(SPEC_FEE_VARIETIES.includes(variety)){
         const selected = specSel.value;
         const feeMap = SPEC_FEE_MAP[selected] || {};
-        // 해당 규격에 정의된 항목만 덮어쓰기, 없으면 FEE_DEFAULTS 기본값으로
         const packingEl   = document.getElementById('f-packing');
         const transportEl = document.getElementById('f-transport');
         if(packingEl)   packingEl.value   = feeMap.packing   ?? FEE_DEFAULTS.packing;
