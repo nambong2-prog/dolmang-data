@@ -615,6 +615,7 @@
                     <p class="text-xs text-gray-400 mb-1">이 가격 이상이어야 손익분기</p>
                     <p id="r-breakeven" class="text-4xl font-black text-orange-600">—</p>
                     <p class="text-xs text-gray-400 mt-1">원/박스</p>
+                    <p id="r-breakeven-kg" class="text-sm font-bold text-orange-400 mt-1"></p>
                 </div>
             </div>
 
@@ -626,7 +627,10 @@
                 <div class="p-4 space-y-2.5">
                     <div class="flex justify-between items-center py-1.5 border-b border-dashed border-gray-100">
                         <span class="text-xs text-gray-500">예상 경락가</span>
-                        <span id="r-sellprice" class="text-sm font-bold text-gray-700">—</span>
+                        <span class="text-right">
+                            <span id="r-sellprice" class="text-sm font-bold text-gray-700">—</span>
+                            <span id="r-sellprice-kg" class="block text-xs text-purple-500 font-bold"></span>
+                        </span>
                     </div>
                     <div class="flex justify-between items-center py-1.5 border-b border-dashed border-gray-100">
                         <span class="text-xs text-gray-500">총 공제액</span>
@@ -1638,9 +1642,15 @@ function calcProfit(){
         const el = document.getElementById('r-breakeven');
         el.textContent = breakeven > 0 ? fmt(breakeven) + '원' : '—';
         el.className = 'text-4xl font-black ' + (sellPrice >= breakeven && breakeven > 0 ? 'text-green-600' : 'text-red-500');
+        // 손익분기점 kg단가
+        const beKgEl = document.getElementById('r-breakeven-kg');
+        if(beKgEl) beKgEl.textContent = (breakeven > 0 && specKg > 0)
+            ? `kg단가 ${fmt(Math.round(breakeven / specKg))}원/kg`
+            : '';
     } else {
         setText('r-breakeven', '—');
         document.getElementById('r-breakeven').className = 'text-4xl font-black text-orange-600';
+        setText('r-breakeven-kg', '');
     }
 
     // 박스당 수익
@@ -1650,6 +1660,11 @@ function calcProfit(){
         const profitPer = netPer - buyPrice;
 
         setText('r-sellprice', `${fmt(sellPrice)}원`);
+        // 예상경락가 kg단가
+        const sellKgEl = document.getElementById('r-sellprice-kg');
+        if(sellKgEl) sellKgEl.textContent = specKg > 0
+            ? `kg단가 ${fmt(Math.round(sellPrice / specKg))}원/kg`
+            : '';
         setText('r-deduct',    `▼ ${fmt(deduct)}원`);
         setText('r-net',       `${fmt(netPer)}원`);
         setText('r-buyprice',  buyPrice ? `▼ ${fmt(buyPrice)}원 (${fmt(kgPrice)}원/kg × ${specKg}kg)` : '미입력');
@@ -1689,6 +1704,7 @@ function calcProfit(){
     } else {
         ['r-sellprice','r-deduct','r-net','r-buyprice'].forEach(id=>setText(id,'—'));
         ['r-total-cost','r-total-net','r-total-deduct','r-total-profit'].forEach(id=>setText(id,'—'));
+        setText('r-sellprice-kg', '');
     }
 
     // 시뮬레이션 테이블 (±20% 범위, 5,000원 단위)
