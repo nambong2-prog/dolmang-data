@@ -155,13 +155,23 @@ def make_stats(data_list, group_key="품종"):
             if p < daily_report[dk]["최저가"]: daily_report[dk]["최저가"] = p
 
             # ── 시장별 ──
+            corp = row.get("법인") or ""
             mk = f"{f}_{s}_{m}"
             if mk not in market_detail:
                 market_detail[mk] = {"품종": f, "규격": s, "시장명": m,
-                                     "총거래량": 0, "총액": 0, "최고가": 0}
+                                     "총거래량": 0, "총액": 0, "최고가": 0,
+                                     "records": [], "법인별": {}}
             market_detail[mk]["총거래량"] += q
             market_detail[mk]["총액"]     += p * q
+            market_detail[mk]["records"].append({"price": p, "qty": q})
             if p > market_detail[mk]["최고가"]: market_detail[mk]["최고가"] = p
+            if corp:
+                if corp not in market_detail[mk]["법인별"]:
+                    market_detail[mk]["법인별"][corp] = {"법인": corp, "총거래량": 0, "총액": 0, "최고가": 0, "records": []}
+                market_detail[mk]["법인별"][corp]["총거래량"] += q
+                market_detail[mk]["법인별"][corp]["총액"]     += p * q
+                market_detail[mk]["법인별"][corp]["records"].append({"price": p, "qty": q})
+                if p > market_detail[mk]["법인별"][corp]["최고가"]: market_detail[mk]["법인별"][corp]["최고가"] = p
 
         # ── 일일리포트 마무리 ──
         daily_list = []
@@ -200,11 +210,33 @@ def make_stats(data_list, group_key="품종"):
                     v["상위50평균가"] = v["상위50기준가"] = v["상위50거래량"] = 0
                 daily_list.append(v)
 
-        # ── 시장별 TOP6 ──
+        # ── 시장별 TOP6 (상위50% 평균가 기준) ──
         market_list = []
         for v in market_detail.values():
             if v["총거래량"] > 0:
                 v["평균가"] = round(v["총액"] / v["총거래량"])
+                # 상위50% 평균가 계산
+                recs = v["records"]
+                sorted_recs = sorted(recs, key=lambda x: -x["price"])
+                n50 = max(1, len(sorted_recs) // 2)
+                top50 = sorted_recs[:n50]
+                t50_qty = sum(r["qty"] for r in top50)
+                v["상위50평균가"] = round(sum(r["price"]*r["qty"] for r in top50) / t50_qty) if t50_qty else v["평균가"]
+                # 법인별 집계 마무리 (상위50% 평균가 계산)
+                corp_list = []
+                for cd in v["법인별"].values():
+                    cd["평균가"] = round(cd["총액"] / cd["총거래량"]) if cd["총거래량"] else 0
+                    cd_recs = cd["records"]
+                    cd_sorted = sorted(cd_recs, key=lambda x: -x["price"])
+                    cd_n50 = max(1, len(cd_sorted) // 2)
+                    cd_top50 = cd_sorted[:cd_n50]
+                    cd_t50_qty = sum(r["qty"] for r in cd_top50)
+                    cd["상위50평균가"] = round(sum(r["price"]*r["qty"] for r in cd_top50) / cd_t50_qty) if cd_t50_qty else cd["평균가"]
+                    del cd["records"]
+                    corp_list.append(cd)
+                corp_list.sort(key=lambda x: -x["상위50평균가"])
+                v["법인목록"] = corp_list
+                del v["records"], v["법인별"]
                 market_list.append(v)
 
         spec_market_top6 = {}
@@ -213,11 +245,11 @@ def make_stats(data_list, group_key="품종"):
             if key not in spec_market_top6:
                 spec_market_top6[key] = {"품종": v["품종"], "규격": v["규격"], "시장목록": []}
             spec_market_top6[key]["시장목록"].append({
-                "시장명": v["시장명"], "평균가": v["평균가"],
-                "최고가": v["최고가"], "거래량": v["총거래량"]
+                "시장명": v["시장명"], "평균가": v["평균가"], "상위50평균가": v["상위50평균가"],
+                "최고가": v["최고가"], "거래량": v["총거래량"], "법인목록": v["법인목록"]
             })
         for key in spec_market_top6:
-            spec_market_top6[key]["시장목록"].sort(key=lambda x: -x["평균가"])
+            spec_market_top6[key]["시장목록"].sort(key=lambda x: -x["상위50평균가"])
             spec_market_top6[key]["시장목록"] = spec_market_top6[key]["시장목록"][:6]
 
         # ── 이상값 제거된 전체내역 별도 구성 ──
@@ -291,14 +323,26 @@ def save_trend(path, trend):
         json.dump(trend, f, ensure_ascii=False, indent=2)
 
 
-def update_trend(trend, cat, snapshots, date_str):
+def update_trend(trend, cat, snapshots, date_str, daily_report=None):
     """
     trend[cat][날짜] = [스냅샷 목록]
+    trend[cat+'_daily'][날짜] = daily_report (일일리포트 날짜별 보관)
     최대 HISTORY_DAYS일치만 보관
     """
     if cat not in trend:
         trend[cat] = {}
     trend[cat][date_str] = snapshots
+
+    # 날짜별 daily_report 저장
+    if daily_report is not None:
+        dkey = cat + "_daily"
+        if dkey not in trend:
+            trend[dkey] = {}
+        trend[dkey][date_str] = daily_report
+        dates_d = sorted(trend[dkey].keys())
+        if len(dates_d) > HISTORY_DAYS:
+            for old in dates_d[:-HISTORY_DAYS]:
+                del trend[dkey][old]
 
     # 오래된 날짜 제거
     dates = sorted(trend[cat].keys())
@@ -346,9 +390,9 @@ hobak_snap   = make_trend_snapshot(hobak_data, "품목", today)
 
 # ── 누적 trend.json 업데이트 ──
 trend = load_trend("trend.json")
-trend = update_trend(trend, "mangam",  mangam_snap,  today)
-trend = update_trend(trend, "gamgyul", gamgyul_snap, today)
-trend = update_trend(trend, "hobak",   hobak_snap,   today)
+trend = update_trend(trend, "mangam",  mangam_snap,  today, mangam_stats["auction"]["daily_report"])
+trend = update_trend(trend, "gamgyul", gamgyul_snap, today, gamgyul_stats["auction"]["daily_report"])
+trend = update_trend(trend, "hobak",   hobak_snap,   today, hobak_stats["auction"]["daily_report"])
 save_trend("trend.json", trend)
 print(f"trend.json 저장: mangam {len(trend['mangam'])}일치")
 
