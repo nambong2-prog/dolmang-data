@@ -797,7 +797,7 @@ function renderDaily(containerId, data, dateLabel){
                 <thead><tr class="bg-orange-600 text-white">
                     <th class="py-2 px-2 text-left">규격</th>
                     <th class="py-2 px-2">평균가</th>
-                    <th class="py-2 px-2">상위50%<br class="sm:hidden">kg단가</th>
+                    <th class="py-2 px-2">kg단가</th>
                     <th class="py-2 px-2 hide-m">최고가</th>
                     <th class="py-2 px-2 hide-m">최저가</th>
                     <th class="py-2 px-2">거래량</th>
@@ -806,7 +806,7 @@ function renderDaily(containerId, data, dateLabel){
                 <tbody>`;
         groups[v].forEach(r=>{
             const kgUnit = parseKg(r.규격);
-            const kgPrice = kgUnit>0 && r.상위50평균가 ? Math.round(r.상위50평균가/kgUnit) : 0;
+            const kgPrice = kgUnit>0 && r.평균가 ? Math.round(r.평균가/kgUnit) : 0;
             html+=`<tr class="border-b border-orange-50 hover:bg-orange-50">
                 <td class="py-2 px-2 font-bold text-gray-700">${r.규격}</td>
                 <td class="py-2 px-2 text-center font-black text-red-500">${fmt(r.평균가)}원</td>
