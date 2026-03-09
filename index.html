@@ -895,10 +895,11 @@ function renderJungga(containerId, data, rawRows){
 const totalData={};
 function buildFilters(cat,data){
     totalData[cat]=data;
+    const label = cat==='hobak' ? '품목' : '품종';
     const varieties=[...new Set(data.map(r=>r.품종||r.품목||''))].filter(Boolean).sort();
     const specs=[...new Set(data.map(r=>r.규격||''))].filter(Boolean).sort((a,b)=>parseKg(a)-parseKg(b));
     const markets=[...new Set(data.map(r=>r.도매시장||''))].filter(Boolean).sort();
-    document.getElementById(cat+'-filter-variety').innerHTML=`<option value="">품종 전체</option>`+varieties.map(v=>`<option value="${v}">${v}</option>`).join('');
+    document.getElementById(cat+'-filter-variety').innerHTML=`<option value="">${label} 전체</option>`+varieties.map(v=>`<option value="${v}">${v}</option>`).join('');
     document.getElementById(cat+'-filter-spec').innerHTML=`<option value="">규격 전체</option>`+specs.map(s=>`<option value="${s}">${s}</option>`).join('');
     document.getElementById(cat+'-filter-market').innerHTML=`<option value="">시장 전체</option>`+markets.map(m=>`<option value="${m}">${m}</option>`).join('');
     applyFilter(cat);
@@ -1157,7 +1158,9 @@ function drawVolChart(cat, days){
 
 // ── 전체 렌더 ─────────────────────────────────────────────────
 function renderAll(cat, stats){
-    const a=stats.auction, j=stats.jungga;
+    if(!stats) return;
+    const a = stats.auction || {daily_report:[], market_top6:[], total_history:[]};
+    const j = stats.jungga  || {daily_report:[], total_history:[]};
     renderDaily(cat+'-daily-container', a.daily_report);
     renderTop50(cat+'-top50-container', a.daily_report);
     renderMarketTop6(cat+'-market-container', a.market_top6);
