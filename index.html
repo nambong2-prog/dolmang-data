@@ -457,7 +457,7 @@
         <span class="text-2xl">🧮</span>
         <div>
             <p class="font-black text-orange-700 text-sm">공판 수익예상계산기</p>
-            <p class="text-xs text-orange-400">선과장(감협) 9kg 작업 기준 · 도매시장 출하</p>
+            <p id="calc-banner-desc" class="text-xs text-orange-400">선과장 작업 기준 · 도매시장 출하</p>
         </div>
     </div>
 
@@ -473,6 +473,22 @@
                     <h2 class="font-bold text-gray-800 text-sm">기본 정보</h2>
                 </div>
                 <div class="p-4 space-y-4">
+
+                    <!-- 작업방식 선택 -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5">작업방식</label>
+                        <div class="flex gap-2">
+                            <button id="wtype-sungwa" onclick="setWorkType('선과장')"
+                                class="flex-1 py-2 px-3 rounded-lg border-2 border-orange-400 bg-orange-50 text-orange-700 text-xs font-black transition-all">
+                                🏭 선과장 작업
+                            </button>
+                            <button id="wtype-direct" onclick="setWorkType('직접')"
+                                class="flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 bg-white text-gray-400 text-xs font-bold transition-all">
+                                🙋 직접 작업
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">품종</label>
@@ -487,7 +503,7 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">규격</label>
                             <select id="c-spec" onchange="calcProfit()" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
-                                <option value="9kg">9kg (선과장 작업)</option>
+                                <option value="9kg">9kg</option>
                             </select>
                         </div>
                     </div>
@@ -524,9 +540,9 @@
                     <button onclick="resetFees()" class="text-xs text-orange-400 hover:text-orange-600 font-bold border border-orange-200 px-2 py-1 rounded-lg">기본값 복원</button>
                 </div>
                 <div class="p-4 space-y-2.5">
-                    <!-- 상장수수료 -->
+                    <!-- 경매수수료 -->
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500 w-28 shrink-0">상장수수료</span>
+                        <span class="text-xs text-gray-500 w-28 shrink-0">경매수수료</span>
                         <input id="f-commission" type="number" step="0.1" value="6" oninput="calcProfit()"
                             class="calc-input w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
                         <span class="text-xs text-gray-400">%</span>
@@ -564,16 +580,16 @@
                         <span class="text-xs text-gray-400">원/박스</span>
                         <span id="f-packing-val" class="ml-auto text-xs font-bold text-gray-600"></span>
                     </div>
-                    <!-- 자조금 -->
+                    <!-- 기타 (구 자조금) -->
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500 w-28 shrink-0">자조금</span>
+                        <span class="text-xs text-gray-500 w-28 shrink-0">기타</span>
                         <input id="f-fund" type="number" value="96" oninput="calcProfit()"
                             class="calc-input w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
                         <span class="text-xs text-gray-400">원/박스</span>
                         <span id="f-fund-val" class="ml-auto text-xs font-bold text-gray-600"></span>
                     </div>
-                    <!-- 출하처기타(감협수수료) - 경락가 2% 자동계산 -->
-                    <div class="flex items-center gap-2 border-t border-dashed border-gray-200 pt-2.5">
+                    <!-- 출하처기타(감협수수료) - 선과장 작업시에만 표시 -->
+                    <div id="f-etc-row" class="flex items-center gap-2 border-t border-dashed border-gray-200 pt-2.5">
                         <span class="text-xs text-gray-500 w-28 shrink-0">출하처기타 <span class="text-orange-400 text-xs">(감협 2%)</span></span>
                         <span class="text-xs text-gray-400 italic">경락가 × 2%</span>
                         <span id="f-etc-val" class="ml-auto text-xs font-bold text-orange-500"></span>
@@ -1477,14 +1493,57 @@ function renderAll(cat, stats){
 
 // ── 수익예상계산기 ───────────────────────────────────────────────
 const FEE_DEFAULTS = {
-    commission: 6,    // 상장수수료 %
+    commission: 6,    // 경매수수료 %
     transport:  1800, // 운송비 원/박스
     unload:     240,  // 하역비
     sorting:    2500, // 선별포장비
     packing:    1550, // 포장재비용
-    fund:       96,   // 자조금
-    // 출하처기타(감협): 경락가 × 2% (별도 입력 없음)
+    fund:       96,   // 기타
+    // 출하처기타(감협): 경락가 × 2% (선과장 작업시만)
 };
+
+// 작업방식: '선과장' | '직접'
+let _workType = '선과장';
+
+// 규격 옵션 정의
+const SPECS_SUNGWA  = ['3kg','5kg','5kg(감귤)','9kg'];  // 선과장
+const SPECS_DIRECT  = ['3kg','5kg','5kg(감귤)','9kg']; // 직접작업
+// 직접작업에도 9kg 기본 선택
+
+function setWorkType(type){
+    _workType = type;
+
+    // 버튼 스타일
+    const sBtn = document.getElementById('wtype-sungwa');
+    const dBtn = document.getElementById('wtype-direct');
+    if(type === '선과장'){
+        sBtn.className = 'flex-1 py-2 px-3 rounded-lg border-2 border-orange-400 bg-orange-50 text-orange-700 text-xs font-black transition-all';
+        dBtn.className = 'flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 bg-white text-gray-400 text-xs font-bold transition-all';
+    } else {
+        dBtn.className = 'flex-1 py-2 px-3 rounded-lg border-2 border-blue-400 bg-blue-50 text-blue-700 text-xs font-black transition-all';
+        sBtn.className = 'flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 bg-white text-gray-400 text-xs font-bold transition-all';
+    }
+
+    // 규격 옵션 업데이트
+    const specSel = document.getElementById('c-spec');
+    const curSpec = specSel.value;
+    const specs = type === '선과장' ? SPECS_SUNGWA : SPECS_DIRECT;
+    specSel.innerHTML = specs.map(s=>`<option value="${s}"${s===curSpec?' selected':''}>${s}</option>`).join('');
+    // 기본값: 9kg
+    if(!specs.includes(curSpec)) specSel.value = '9kg';
+
+    // 출하처기타 행 표시/숨김
+    const etcRow = document.getElementById('f-etc-row');
+    if(etcRow) etcRow.style.display = type === '선과장' ? '' : 'none';
+
+    // 배너 설명 업데이트
+    const banner = document.getElementById('calc-banner-desc');
+    if(banner) banner.textContent = type === '선과장'
+        ? '선과장 작업 기준 · 도매시장 출하'
+        : '직접 작업 기준 · 도매시장 출하';
+
+    calcProfit();
+}
 
 function resetFees(){
     Object.entries(FEE_DEFAULTS).forEach(([k,v])=>{
@@ -1496,15 +1555,14 @@ function resetFees(){
 
 function calcProfit(){
     const sellPrice  = parseFloat(document.getElementById('c-sellprice').value)||0;
-    const kgPrice    = parseFloat(document.getElementById('c-buyprice').value)||0;  // kg원가
+    const kgPrice    = parseFloat(document.getElementById('c-buyprice').value)||0;
     const qty        = parseFloat(document.getElementById('c-qty').value)||0;
     const specVal    = document.getElementById('c-spec').value || '9kg';
-    const specKg     = parseKg(specVal);  // 규격에서 무게 추출 (예: 9)
+    const specKg     = parseKg(specVal);
 
-    // 박스당 매입가 = kg원가 × 규격무게
+    // 박스당 매입가
     const buyPrice = kgPrice > 0 ? Math.round(kgPrice * specKg) : 0;
 
-    // 박스당 환산 표시
     const boxEl = document.getElementById('c-buyprice-box');
     if(boxEl) boxEl.textContent = kgPrice>0 && specKg>0
         ? `→ 박스당 ${fmt(buyPrice)}원 (${specKg}kg × ${fmt(kgPrice)}원/kg)`
@@ -1516,36 +1574,33 @@ function calcProfit(){
     const sorting   = parseFloat(document.getElementById('f-sorting').value)||0;
     const packing   = parseFloat(document.getElementById('f-packing').value)||0;
     const fund      = parseFloat(document.getElementById('f-fund').value)||0;
-    // 출하처기타: 경락가 × 2%
 
-    // 경락가 기준 공제액 계산 함수
+    const isSungwa  = _workType === '선과장';
+
     function calcDeduct(price){
-        const comm    = Math.round(price * commRate / 100);
-        const etcAmt  = Math.round(price * 2 / 100);   // 감협 2%
-        const fixed   = transport + unload + sorting + packing + fund;
+        const comm   = Math.round(price * commRate / 100);
+        const etcAmt = isSungwa ? Math.round(price * 2 / 100) : 0;
+        const fixed  = transport + unload + sorting + packing + fund;
         return comm + etcAmt + fixed;
     }
     const fixedBase = transport + unload + sorting + packing + fund;
 
-    // 공제 항목별 금액 표시 (sellPrice 기준)
     const commAmt = sellPrice ? Math.round(sellPrice * commRate / 100) : 0;
-    const etcAmt  = sellPrice ? Math.round(sellPrice * 2 / 100) : 0;
+    const etcAmt  = sellPrice && isSungwa ? Math.round(sellPrice * 2 / 100) : 0;
     setText('f-commission-val', sellPrice ? `${fmt(commAmt)}원` : '');
     setText('f-transport-val',  `${fmt(transport)}원`);
     setText('f-unload-val',     `${fmt(unload)}원`);
     setText('f-sorting-val',    `${fmt(sorting)}원`);
     setText('f-packing-val',    `${fmt(packing)}원`);
     setText('f-fund-val',       `${fmt(fund)}원`);
-    setText('f-etc-val',        sellPrice ? `${fmt(etcAmt)}원` : '경락가 입력 후 계산');
+    if(isSungwa) setText('f-etc-val', sellPrice ? `${fmt(etcAmt)}원` : '경락가 입력 후 계산');
 
-    // 총 공제 표시
     setText('f-total-deduct', sellPrice
         ? `${fmt(calcDeduct(sellPrice))}원/박스`
         : `최소 ${fmt(fixedBase)}원/박스 + 수수료`);
 
-    // 손익분기점: buyPrice + fixedBase = price × (1 - commRate/100 - 0.02)
     if(buyPrice > 0){
-        const netRate = 1 - commRate/100 - 0.02;
+        const netRate = 1 - commRate/100 - (isSungwa ? 0.02 : 0);
         const breakeven = netRate > 0 ? Math.ceil((buyPrice + fixedBase) / netRate) : 0;
         const el = document.getElementById('r-breakeven');
         el.textContent = breakeven > 0 ? fmt(breakeven) + '원' : '—';
@@ -1769,6 +1824,7 @@ window.addEventListener('resize', ()=>{
 });
 
 // 초기 계산 실행
+setWorkType('선과장');  // 기본값: 선과장 작업, 9kg
 calcProfit();
 </script>
 </body>
