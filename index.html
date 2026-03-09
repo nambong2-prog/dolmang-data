@@ -193,6 +193,12 @@
 
 <!-- ===== 만감류 ===== -->
 <div id="tab-mangam" class="tab-content active">
+    <!-- 날짜 선택기 -->
+    <div id="mangam-date-header" class="flex items-center gap-2 mb-3 px-1">
+        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
+        <div id="mangam-date-bar"></div>
+        <span id="mangam-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('mangam','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
         <button onclick="changeSubTab('mangam','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
@@ -206,7 +212,6 @@
         <div class="card">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="font-bold text-gray-800 text-sm">📊 만감류 일일 리포트 <span class="text-xs text-gray-400 font-normal ml-1">경매만 · 품종별 카드</span></h2>
-                <div id="mangam-date-bar"></div>
             </div>
             <div id="mangam-daily-container"></div>
         </div>
@@ -283,6 +288,12 @@
 
 <!-- ===== 감귤 ===== -->
 <div id="tab-gamgyul" class="tab-content">
+    <!-- 날짜 선택기 -->
+    <div id="gamgyul-date-header" class="flex items-center gap-2 mb-3 px-1">
+        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
+        <div id="gamgyul-date-bar"></div>
+        <span id="gamgyul-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('gamgyul','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
         <button onclick="changeSubTab('gamgyul','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
@@ -295,7 +306,6 @@
         <div class="card">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="font-bold text-gray-800 text-sm">📊 감귤 일일 리포트 <span class="text-xs text-gray-400 font-normal ml-1">경매만 · 품종별 카드</span></h2>
-                <div id="gamgyul-date-bar"></div>
             </div>
             <div id="gamgyul-daily-container"></div>
         </div>
@@ -354,6 +364,12 @@
 
 <!-- ===== 제주호박 ===== -->
 <div id="tab-hobak" class="tab-content">
+    <!-- 날짜 선택기 -->
+    <div id="hobak-date-header" class="flex items-center gap-2 mb-3 px-1">
+        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
+        <div id="hobak-date-bar"></div>
+        <span id="hobak-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('hobak','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
         <button onclick="changeSubTab('hobak','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
@@ -366,7 +382,6 @@
         <div class="card">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="font-bold text-gray-800 text-sm">📊 제주호박 일일 리포트 <span class="text-xs text-orange-500 font-normal">원산지 제주만 · 품종별 카드</span></h2>
-                <div id="hobak-date-bar"></div>
             </div>
             <div id="hobak-daily-container"></div>
         </div>
@@ -1202,21 +1217,62 @@ function selectDailyDate(cat, date){
     dailySelected[cat] = date;
     renderDateBar(cat);
 
-    const container = document.getElementById(cat+'-daily-container');
-    if(!container) return;
+    // 날짜 배지 표시
+    const badge = document.getElementById(cat+'-date-badge');
+    if(badge) {
+        if(date === 'today') { badge.classList.add('hidden'); }
+        else { badge.textContent = date.replace(/^\d{4}-/,'') + ' 데이터'; badge.classList.remove('hidden'); }
+    }
 
-    if(date === 'today'){
-        // 오늘: renderAll이 이미 렌더한 상태 → 재렌더
-        const stats = window._currentStats && window._currentStats[cat];
-        if(stats) renderDaily(cat+'-daily-container', stats.auction?.daily_report || []);
+    const isToday = date === 'today';
+    const stats = window._currentStats && window._currentStats[cat];
+    const dailyReport = isToday
+        ? (stats?.auction?.daily_report || [])
+        : ((dailyHistory[cat] || {})[date] || []);
+
+    // ── 일일리포트 ──
+    if(isToday){
+        if(stats) renderDaily(cat+'-daily-container', dailyReport);
     } else {
-        // 과거 날짜
-        const report = (dailyHistory[cat] || {})[date];
-        if(report && report.length){
-            renderDaily(cat+'-daily-container', report, date);
+        if(dailyReport.length){
+            renderDaily(cat+'-daily-container', dailyReport, date);
         } else {
-            container.innerHTML = '<p class="py-10 text-gray-300 text-center text-sm">해당 날짜 데이터 없음</p>';
+            const el = document.getElementById(cat+'-daily-container');
+            if(el) el.innerHTML = '<p class="py-10 text-gray-300 text-center text-sm">해당 날짜 데이터 없음</p>';
         }
+    }
+
+    // ── 상위50% ──
+    if(isToday){
+        if(stats) renderTop50(cat+'-top50-container', stats.auction?.daily_report || []);
+    } else {
+        if(dailyReport.length){
+            renderTop50(cat+'-top50-container', dailyReport);
+        } else {
+            const el = document.getElementById(cat+'-top50-container');
+            if(el) el.innerHTML = '<p class="py-10 text-gray-300 text-center text-sm">해당 날짜 데이터 없음</p>';
+        }
+    }
+
+    // ── 시장TOP6, 정가수의, 전체내역 ── (오늘만 지원)
+    const pastMsg = `<div class="py-10 text-center">
+        <p class="text-gray-300 text-sm mb-1">과거 날짜는 일일리포트·상위50%만 조회 가능</p>
+        <p class="text-xs text-gray-200">시장TOP6·정가수의·전체내역은 오늘 데이터만 제공</p>
+    </div>`;
+
+    if(isToday){
+        if(stats){
+            renderMarketTop6(cat+'-market-container', stats.auction?.market_top6 || []);
+            renderJungga(cat+'-jungga-container', stats.jungga?.daily_report || [], stats.jungga?.total_history || []);
+            buildFilters(cat, stats.auction?.total_history || []);
+        }
+    } else {
+        const mkt = document.getElementById(cat+'-market-container');
+        const jng = document.getElementById(cat+'-jungga-container');
+        const tot = document.getElementById(cat+'-total-container');
+        if(mkt) mkt.innerHTML = pastMsg;
+        if(jng) jng.innerHTML = pastMsg;
+        if(tot) tot.innerHTML = pastMsg;
     }
 }
 
