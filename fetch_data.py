@@ -6,11 +6,12 @@ from datetime import datetime
 API_KEY = os.environ.get("API_KEY")
 today = datetime.now().strftime("%Y%m%d")
 
-url = "http://apis.data.go.kr/B552895/openapi/service/OrgLargeHocuListService/getOrgLargeHocuList"
+url = "http://apis.data.go.kr/B552895/openapi/service/UsflInfoService/getWhsalAuctnDtlList"
 params = {
     'serviceKey': API_KEY,
     'saleDate': today,
-    'large_clsf_nm': '과일류',
+    'whsalCd': '',
+    'prdlstCd': '',
     '_type': 'json',
     'numOfRows': '9999',
     'pageNo': '1'
