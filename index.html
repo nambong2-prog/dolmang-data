@@ -615,8 +615,6 @@ function updateTodayHint(){
     }
 }
 document.getElementById('c-variety').addEventListener('change', updateTodayHint);
-// 초기 계산 실행
-calcProfit();
 function changeTab(name,btn){
     document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
     document.getElementById('tab-'+name).classList.add('active');
@@ -1387,6 +1385,8 @@ Promise.all([
     document.getElementById('update-time').innerText='데이터 로딩 대기중';
     console.error(e);
 });
+// 초기 계산 실행 (모든 함수 선언 후)
+calcProfit();
 </script>
 </body>
 </html>
