@@ -1510,13 +1510,35 @@ const SPECS_DEFAULT = ['3kg','5kg','9kg'];       // 감귤 외 모든 품종
 const SPECS_GAMGYUL = ['5kg'];                // 감귤 전용
 // 직접작업에도 9kg 기본 선택
 
+// 규격+품종별 기본값 테이블
+// 천혜향/한라봉/레드향: 3kg→포장재1200/운송850, 5kg→운송1000
+// 9kg는 기존값 유지 (포장재1550, 운송1800)
+const SPEC_FEE_MAP = {
+    '3kg': { packing: 1200, transport: 850 },
+    '5kg': { transport: 1000 },
+};
+const SPEC_FEE_VARIETIES = ['천혜향','한라봉','레드향']; // 적용 대상 품종
+
 function updateSpecOptions(keepSpec){
-    const isGamgyul = (document.getElementById('c-variety')?.value === '감귤');
+    const variety = document.getElementById('c-variety')?.value || '';
+    const isGamgyul = variety === '감귤';
     const specs = isGamgyul ? SPECS_GAMGYUL : SPECS_DEFAULT;
     const specSel = document.getElementById('c-spec');
     const cur = keepSpec || specSel.value;
     specSel.innerHTML = specs.map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
     if(!specs.includes(cur)) specSel.value = specs[0];
+
+    // 규격별 기본값 적용 (천혜향/한라봉/레드향만)
+    if(SPEC_FEE_VARIETIES.includes(variety)){
+        const selected = specSel.value;
+        const feeMap = SPEC_FEE_MAP[selected] || {};
+        // 해당 규격에 정의된 항목만 덮어쓰기, 없으면 FEE_DEFAULTS 기본값으로
+        const packingEl   = document.getElementById('f-packing');
+        const transportEl = document.getElementById('f-transport');
+        if(packingEl)   packingEl.value   = feeMap.packing   ?? FEE_DEFAULTS.packing;
+        if(transportEl) transportEl.value = feeMap.transport ?? FEE_DEFAULTS.transport;
+    }
+
     calcProfit();
 }
 
