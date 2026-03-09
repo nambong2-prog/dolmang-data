@@ -206,7 +206,7 @@
         <div class="card">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="font-bold text-gray-800 text-sm">📊 만감류 일일 리포트 <span class="text-xs text-gray-400 font-normal ml-1">경매만 · 품종별 카드</span></h2>
-                <div id="mangam-date-bar" class="flex items-center gap-1 overflow-x-auto" style="scrollbar-width:none;max-width:100%"></div>
+                <div id="mangam-date-bar"></div>
             </div>
             <div id="mangam-daily-container"></div>
         </div>
@@ -295,7 +295,7 @@
         <div class="card">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="font-bold text-gray-800 text-sm">📊 감귤 일일 리포트 <span class="text-xs text-gray-400 font-normal ml-1">경매만 · 품종별 카드</span></h2>
-                <div id="gamgyul-date-bar" class="flex items-center gap-1 overflow-x-auto" style="scrollbar-width:none;max-width:100%"></div>
+                <div id="gamgyul-date-bar"></div>
             </div>
             <div id="gamgyul-daily-container"></div>
         </div>
@@ -366,7 +366,7 @@
         <div class="card">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="font-bold text-gray-800 text-sm">📊 제주호박 일일 리포트 <span class="text-xs text-orange-500 font-normal">원산지 제주만 · 품종별 카드</span></h2>
-                <div id="hobak-date-bar" class="flex items-center gap-1 overflow-x-auto" style="scrollbar-width:none;max-width:100%"></div>
+                <div id="hobak-date-bar"></div>
             </div>
             <div id="hobak-daily-container"></div>
         </div>
@@ -1181,35 +1181,21 @@ function renderDateBar(cat){
     const bar = document.getElementById(cat+'-date-bar');
     if(!bar) return;
     const history = dailyHistory[cat] || {};
-    const dates = Object.keys(history).sort().reverse();  // 최신순
+    const dates = Object.keys(history).sort().reverse();
 
-    if(!dates.length){
-        bar.innerHTML = '';
-        return;
-    }
+    if(!dates.length){ bar.innerHTML = ''; return; }
 
-    // 최대 14일치만 버튼 표시
-    const show = dates.slice(0, 14);
     const selected = dailySelected[cat] || 'today';
-
-    let html = `<button onclick="selectDailyDate('${cat}','today')"
-        class="shrink-0 text-xs px-2.5 py-1 rounded-full font-bold border transition-all whitespace-nowrap
-        ${selected==='today'
-            ? 'bg-orange-500 text-white border-orange-500'
-            : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'}"
-    >오늘</button>`;
-
-    show.forEach(d => {
-        const label = d.slice(5);   // MM-DD
-        const isActive = selected === d;
-        html += `<button onclick="selectDailyDate('${cat}','${d}')"
-            class="shrink-0 text-xs px-2.5 py-1 rounded-full font-bold border transition-all whitespace-nowrap
-            ${isActive
-                ? 'bg-orange-500 text-white border-orange-500'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'}"
-        >${label}</button>`;
+    let optHtml = `<option value="today" ${selected==='today'?'selected':''}>오늘</option>`;
+    dates.forEach(d => {
+        const label = d.replace(/^\d{4}-/, '');
+        optHtml += `<option value="${d}" ${selected===d?'selected':''}>${label}</option>`;
     });
-    bar.innerHTML = html;
+    bar.innerHTML = `<select onchange="selectDailyDate('${cat}',this.value)"
+        style="font-size:12px;padding:4px 10px;border:1.5px solid #fdba74;border-radius:8px;
+               background:#fff7ed;color:#ea580c;font-weight:700;cursor:pointer;outline:none;">
+        ${optHtml}
+    </select>`;
 }
 
 function selectDailyDate(cat, date){
@@ -1279,16 +1265,19 @@ function drawTrend(cat){
     const allDates=Object.keys(trend).sort();
     const dates=allDates.slice(-days);
 
-    const prices=[], vols=[], tops50=[];
+    const prices=[], vols=[], top50prices=[];
     dates.forEach(d=>{
         const rows=(trend[d]||[]).filter(r=>r.품종===variety&&r.규격===spec);
         if(rows.length>0){
-            prices.push({x:d, y:rows[0].평균가});
-            vols.push({x:d, y:rows[0].총거래량});
+            prices.push(rows[0].평균가);
+            vols.push(rows[0].총거래량);
         } else {
-            prices.push({x:d, y:null});
-            vols.push({x:d, y:null});
+            prices.push(null);
+            vols.push(null);
         }
+        // 상위50% 평균가 → dailyHistory에서
+        const dailyRows = ((dailyHistory[cat]||{})[d]||[]).filter(r=>r.품종===variety&&r.규격===spec);
+        top50prices.push(dailyRows.length>0 ? (dailyRows[0].상위50평균가||null) : null);
     });
 
     // 가격 차트
@@ -1299,19 +1288,28 @@ function drawTrend(cat){
         type:'line',
         data:{
             labels:dates,
-            datasets:[{
-                label:`${variety} ${spec} 평균가`,
-                data:prices.map(p=>p.y),
-                borderColor:'#f97316', backgroundColor:'rgba(249,115,22,0.08)',
-                borderWidth:2.5, pointRadius:4, pointHoverRadius:6,
-                tension:0.3, fill:true, spanGaps:true
-            }]
+            datasets:[
+                {
+                    label:`전체 평균가`,
+                    data:prices,
+                    borderColor:'#f97316', backgroundColor:'rgba(249,115,22,0.07)',
+                    borderWidth:2.5, pointRadius:4, pointHoverRadius:6,
+                    tension:0.3, fill:true, spanGaps:true
+                },
+                {
+                    label:`상위50% 평균가`,
+                    data:top50prices,
+                    borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.0)',
+                    borderWidth:2, pointRadius:3, pointHoverRadius:5,
+                    borderDash:[5,3], tension:0.3, fill:false, spanGaps:true
+                }
+            ]
         },
         options:{
             responsive:true, maintainAspectRatio:false,
             plugins:{
-                legend:{display:false},
-                tooltip:{callbacks:{label:ctx=>`${fmt(ctx.raw)}원`}}
+                legend:{display:true, position:'top', labels:{font:{size:11}, boxWidth:14, usePointStyle:true}},
+                tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}원`}}
             },
             scales:{
                 x:{ticks:{font:{size:10},maxRotation:45},grid:{display:false}},
@@ -1321,19 +1319,21 @@ function drawTrend(cat){
     });
 
     // 요약 카드
-    const validP=prices.filter(p=>p.y!==null).map(p=>p.y);
+    const validP=prices.filter(p=>p!==null);
+    const validT=top50prices.filter(p=>p!==null);
     const sumEl=document.getElementById(cat+'-trend-summary');
     if(validP.length>0){
         const avg=Math.round(validP.reduce((a,b)=>a+b,0)/validP.length);
+        const avgTop50=validT.length>0?Math.round(validT.reduce((a,b)=>a+b,0)/validT.length):null;
         const maxP=Math.max(...validP), minP=Math.min(...validP);
         const last=validP[validP.length-1], prev=validP[validP.length-2];
-        const diff=prev?last-prev:0;
+        const diff=prev!=null?last-prev:0;
         const diffStr=diff>0?`▲${fmt(diff)}`:diff<0?`▼${fmt(Math.abs(diff))}`:'-';
         const diffColor=diff>0?'text-red-500':diff<0?'text-blue-500':'text-gray-400';
         sumEl.innerHTML=`
-            <div class="bg-orange-50 rounded-xl p-3 text-center"><p class="text-xs text-orange-400 mb-1">${days}일 평균가</p><p class="text-lg font-black text-orange-600">${fmt(avg)}원</p></div>
-            <div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 mb-1">최고가</p><p class="text-lg font-black text-red-500">${fmt(maxP)}원</p></div>
-            <div class="bg-blue-50 rounded-xl p-3 text-center"><p class="text-xs text-blue-400 mb-1">최저가</p><p class="text-lg font-black text-blue-500">${fmt(minP)}원</p></div>
+            <div class="bg-orange-50 rounded-xl p-3 text-center"><p class="text-xs text-orange-400 mb-1">${days}일 전체평균</p><p class="text-lg font-black text-orange-600">${fmt(avg)}원</p></div>
+            <div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 mb-1">${days}일 상위50%평균</p><p class="text-lg font-black text-red-500">${avgTop50?fmt(avgTop50)+'원':'-'}</p></div>
+            <div class="bg-blue-50 rounded-xl p-3 text-center"><p class="text-xs text-blue-400 mb-1">최고가</p><p class="text-lg font-black text-blue-600">${fmt(maxP)}원</p></div>
             <div class="bg-gray-50 rounded-xl p-3 text-center"><p class="text-xs text-gray-400 mb-1">전일 대비</p><p class="text-lg font-black ${diffColor}">${diffStr}</p></div>`;
     } else {
         sumEl.innerHTML='<p class="text-gray-300 text-sm col-span-4 text-center py-2">데이터 부족</p>';
