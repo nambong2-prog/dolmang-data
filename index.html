@@ -820,6 +820,7 @@ function renderTop50(containerId,data){
                 <thead><tr class="bg-blue-700 text-white">
                     <th class="py-2 px-3 text-left">규격</th>
                     <th class="py-2 px-3">상위50% 평균가</th>
+                    <th class="py-2 px-3">상위50% kg단가</th>
                     <th class="py-2 px-3 hide-m">상위50% 거래량</th>
                     <th class="py-2 px-3 hide-m">전체 평균가</th>
                     <th class="py-2 px-3">전체 거래량</th>
@@ -828,6 +829,8 @@ function renderTop50(containerId,data){
                 <tbody>`;
         groups[v].forEach(r=>{
             const diff = r.상위50평균가 - r.평균가;
+            const kgUnit = parseKg(r.규격);
+            const top50kg = (kgUnit > 0 && r.상위50평균가) ? Math.round(r.상위50평균가 / kgUnit) : 0;
             html+=`<tr class="border-b border-blue-50 hover:bg-blue-50">
                 <td class="py-2.5 px-3 font-bold text-gray-700">${r.규격}</td>
                 <td class="py-2.5 px-3 text-center">
@@ -835,6 +838,10 @@ function renderTop50(containerId,data){
                     <span class="ml-1 text-xs ${diff>=0?'text-green-400':'text-red-400'} hide-m">
                         (${diff>=0?'+':''}${fmt(diff)})
                     </span>
+                </td>
+                <td class="py-2.5 px-3 text-center">
+                    <span class="font-black text-purple-600">${top50kg ? fmt(top50kg)+'원' : '-'}</span>
+                    <span class="text-gray-400 text-xs"> /kg</span>
                 </td>
                 <td class="py-2.5 px-3 text-center text-blue-600 font-bold hide-m">${fmt(r.상위50거래량)}박스</td>
                 <td class="py-2.5 px-3 text-center text-gray-400 hide-m">${fmt(r.평균가)}원</td>
@@ -875,31 +882,38 @@ function renderMarketTop6(containerId,marketData){
                     <th class="py-1.5 px-2 w-7">순위</th>
                     <th class="text-left px-2">시장명</th>
                     <th class="px-2">상위50%평균</th>
-                    <th class="px-2">전체평균</th>
+                    <th class="px-2">kg단가</th>
+                    <th class="px-2 hide-m">전체평균</th>
                     <th class="px-2">거래량</th>
                 </tr></thead><tbody>
                 ${item.시장목록.map((m,i)=>{
                     const rowId=uid+'_'+i;
                     const corps=(m.법인목록||[]);
+                    const kgUnit=parseKg(item.규격);
+                    const mKg=(kgUnit>0&&m.상위50평균가)?Math.round(m.상위50평균가/kgUnit):0;
                     const corpsHtml=corps.length?`<tr id="corp_${rowId}" style="display:none">
-                        <td colspan="5" class="p-0">
+                        <td colspan="6" class="p-0">
                             <table class="w-full text-xs bg-emerald-50">
                                 <thead><tr class="bg-emerald-200 text-emerald-800">
                                     <th class="py-1 px-3 text-left">법인 <span class="font-normal text-emerald-500">(상위3)</span></th>
                                     <th class="py-1 px-2">상위50%평균</th>
-                                    <th class="py-1 px-2">전체평균</th>
-                                    <th class="py-1 px-2">최고가</th>
+                                    <th class="py-1 px-2">kg단가</th>
+                                    <th class="py-1 px-2 hide-m">전체평균</th>
+                                    <th class="py-1 px-2 hide-m">최고가</th>
                                     <th class="py-1 px-2">거래량</th>
                                 </tr></thead>
-                                <tbody>${corps.slice(0,3).map((c,ci)=>`<tr class="border-b border-emerald-100">
+                                <tbody>${corps.slice(0,3).map((c,ci)=>{
+                                    const cKg=(kgUnit>0&&c.상위50평균가)?Math.round(c.상위50평균가/kgUnit):0;
+                                    return `<tr class="border-b border-emerald-100">
                                     <td class="py-1.5 px-3 font-bold text-emerald-800">
                                         <span class="text-xs ${ci===0?'text-yellow-500':ci===1?'text-gray-400':'text-amber-600'} mr-1">${ci===0?'①':ci===1?'②':'③'}</span>${c.법인}
                                     </td>
                                     <td class="py-1.5 px-2 text-center font-black text-emerald-700">${fmt(c.상위50평균가)}원</td>
-                                    <td class="py-1.5 px-2 text-center text-gray-500">${fmt(c.평균가)}원</td>
-                                    <td class="py-1.5 px-2 text-center text-red-400">${fmt(c.최고가)}원</td>
+                                    <td class="py-1.5 px-2 text-center font-bold text-purple-600">${cKg?fmt(cKg)+'원':'-'}<span class="text-gray-400 font-normal"> /kg</span></td>
+                                    <td class="py-1.5 px-2 text-center text-gray-500 hide-m">${fmt(c.평균가)}원</td>
+                                    <td class="py-1.5 px-2 text-center text-red-400 hide-m">${fmt(c.최고가)}원</td>
                                     <td class="py-1.5 px-2 text-center text-gray-500">${fmt(c.총거래량)}박스</td>
-                                </tr>`).join('')}</tbody>
+                                </tr>`;}).join('')}</tbody>
                             </table>
                         </td>
                     </tr>`:'';
@@ -908,7 +922,8 @@ function renderMarketTop6(containerId,marketData){
                         <td class="py-2 px-2 text-center ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'text-gray-400 font-bold'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
                         <td class="font-bold text-gray-700 px-2">${m.시장명} ${hasCorps?'<span class="text-emerald-400 text-xs">▼</span>':''}</td>
                         <td class="text-center font-black text-emerald-600 px-2">${fmt(m.상위50평균가)}원</td>
-                        <td class="text-center text-gray-400 px-2">${fmt(m.평균가)}원</td>
+                        <td class="text-center font-bold text-purple-600 px-2">${mKg?fmt(mKg)+'원':'-'}<span class="text-gray-400 font-normal"> /kg</span></td>
+                        <td class="text-center text-gray-400 px-2 hide-m">${fmt(m.평균가)}원</td>
                         <td class="text-center text-gray-500 px-2">${fmt(m.거래량)}박스</td>
                     </tr>${corpsHtml}`;
                 }).join('')}
