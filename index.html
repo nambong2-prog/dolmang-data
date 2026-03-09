@@ -492,7 +492,7 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">품종</label>
-                            <select id="c-variety" onchange="calcProfit()" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                            <select id="c-variety" onchange="updateSpecOptions()" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
                                 <option value="천혜향">천혜향</option>
                                 <option value="한라봉">한라봉</option>
                                 <option value="레드향">레드향</option>
@@ -1506,9 +1506,19 @@ const FEE_DEFAULTS = {
 let _workType = '선과장';
 
 // 규격 옵션 정의
-const SPECS_SUNGWA  = ['3kg','5kg','5kg(감귤)','9kg'];  // 선과장
-const SPECS_DIRECT  = ['3kg','5kg','5kg(감귤)','9kg']; // 직접작업
+const SPECS_DEFAULT = ['3kg','5kg','9kg'];       // 감귤 외 모든 품종
+const SPECS_GAMGYUL = ['5kg'];                // 감귤 전용
 // 직접작업에도 9kg 기본 선택
+
+function updateSpecOptions(keepSpec){
+    const isGamgyul = (document.getElementById('c-variety')?.value === '감귤');
+    const specs = isGamgyul ? SPECS_GAMGYUL : SPECS_DEFAULT;
+    const specSel = document.getElementById('c-spec');
+    const cur = keepSpec || specSel.value;
+    specSel.innerHTML = specs.map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
+    if(!specs.includes(cur)) specSel.value = specs[0];
+    calcProfit();
+}
 
 function setWorkType(type){
     _workType = type;
@@ -1527,10 +1537,7 @@ function setWorkType(type){
     // 규격 옵션 업데이트
     const specSel = document.getElementById('c-spec');
     const curSpec = specSel.value;
-    const specs = type === '선과장' ? SPECS_SUNGWA : SPECS_DIRECT;
-    specSel.innerHTML = specs.map(s=>`<option value="${s}"${s===curSpec?' selected':''}>${s}</option>`).join('');
-    // 기본값: 9kg
-    if(!specs.includes(curSpec)) specSel.value = '9kg';
+    updateSpecOptions(curSpec);
 
     // 출하처기타 행 표시/숨김
     const etcRow = document.getElementById('f-etc-row');
