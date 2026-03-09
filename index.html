@@ -171,11 +171,22 @@
                 <p class="text-xs text-gray-400 hidden sm:block">제주 특산품 도매시장 경매 현황</p>
             </div>
         </div>
-        <div class="text-right">
-            <div class="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold border border-green-200">
-                <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>실시간
+        <div class="text-right flex flex-col items-end gap-1">
+            <div class="flex items-center gap-2">
+                <div class="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold border border-green-200">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>실시간
+                </div>
+                <button onclick="manualRefresh()" id="refresh-btn"
+                    title="새로고침"
+                    style="width:32px;height:32px;border-radius:50%;border:1.5px solid #fdba74;background:#fff7ed;
+                           display:flex;align-items:center;justify-content:center;cursor:pointer;
+                           transition:all 0.2s;font-size:16px;"
+                    onmouseover="this.style.background='#fed7aa'"
+                    onmouseout="this.style.background='#fff7ed'">
+                    🔄
+                </button>
             </div>
-            <p id="update-time" class="text-xs text-gray-400 mt-0.5">로딩중...</p>
+            <p id="update-time" class="text-xs text-gray-400">로딩중...</p>
         </div>
     </div>
     <!-- 메인탭: 가로 스크롤 -->
@@ -1646,46 +1657,102 @@ function fillTodayPrice(){
 }
 
 // ── 데이터 로드 ───────────────────────────────────────────────
-const v='?v='+Date.now();
-Promise.all([
-    fetch('data.json'+v).then(r=>r.json()),
-    fetch('trend.json'+v).then(r=>r.json()).catch(()=>({}))
-]).then(([data, trend])=>{
-    document.getElementById('update-time').innerText='업데이트: '+data.update_time;
-    window._currentStats = { mangam: data.mangam, gamgyul: data.gamgyul, hobak: data.hobak };
-    renderAll('mangam', data.mangam);
-    renderAll('gamgyul', data.gamgyul);
-    renderAll('hobak', data.hobak);
-    // 가격추이 초기화
-    if(trend.mangam)  initTrendControls('mangam',  trend.mangam);
-    if(trend.gamgyul) initTrendControls('gamgyul', trend.gamgyul);
-    if(trend.hobak)   initTrendControls('hobak',   trend.hobak);
+function loadData(){
+    const v='?v='+Date.now();
+    return Promise.all([
+        fetch('data.json'+v).then(r=>r.json()),
+        fetch('trend.json'+v).then(r=>r.json()).catch(()=>({}))
+    ]).then(([data, trend])=>{
+        document.getElementById('update-time').innerText='업데이트: '+data.update_time;
+        window._currentStats = { mangam: data.mangam, gamgyul: data.gamgyul, hobak: data.hobak };
+        renderAll('mangam', data.mangam);
+        renderAll('gamgyul', data.gamgyul);
+        renderAll('hobak', data.hobak);
+        // 가격추이 초기화
+        if(trend.mangam)  initTrendControls('mangam',  trend.mangam);
+        if(trend.gamgyul) initTrendControls('gamgyul', trend.gamgyul);
+        if(trend.hobak)   initTrendControls('hobak',   trend.hobak);
 
-    // 날짜별 일일리포트 선택기 초기화
-    if(trend.mangam_daily)  initDailyDatePicker('mangam',  trend.mangam_daily);
-    if(trend.gamgyul_daily) initDailyDatePicker('gamgyul', trend.gamgyul_daily);
-    if(trend.hobak_daily)   initDailyDatePicker('hobak',   trend.hobak_daily);
+        // 날짜별 일일리포트 선택기 초기화
+        if(trend.mangam_daily)  initDailyDatePicker('mangam',  trend.mangam_daily);
+        if(trend.gamgyul_daily) initDailyDatePicker('gamgyul', trend.gamgyul_daily);
+        if(trend.hobak_daily)   initDailyDatePicker('hobak',   trend.hobak_daily);
 
-    // 수익계산기 - 오늘 경락가 힌트 설정 (9kg 경매 평균가)
-    const mangamDaily = data.mangam?.auction?.daily_report || [];
-    mangamDaily.forEach(r => {
-        if(r.규격 === '9kg') todayPrices[r.품종] = r.평균가;
+        // 수익계산기 - 오늘 경락가 힌트 설정 (9kg 경매 평균가)
+        const mangamDaily = data.mangam?.auction?.daily_report || [];
+        mangamDaily.forEach(r => {
+            if(r.규격 === '9kg') todayPrices[r.품종] = r.평균가;
+        });
+        updateTodayHint();
     });
-    updateTodayHint();
+}
 
-    // 화면 크기 변경 시 전체내역 재렌더링 (모바일↔PC 전환)
-    let resizeTimer;
-    window.addEventListener('resize', ()=>{
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(()=>{
-            ['mangam','gamgyul','hobak'].forEach(cat=>applyFilter(cat));
-        }, 200);
+// ── 수동 새로고침 ─────────────────────────────────────────────
+function manualRefresh(){
+    const btn = document.getElementById('refresh-btn');
+    if(!btn || btn.disabled) return;
+
+    // 버튼 비활성화 + 스피닝 애니메이션
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.animation = 'spin 0.8s linear infinite';
+
+    loadData().then(()=>{
+        // 날짜 선택기 오늘로 리셋
+        ['mangam','gamgyul','hobak'].forEach(cat => {
+            dailySelected[cat] = 'today';
+            renderDateBar(cat);
+            const badge = document.getElementById(cat+'-date-badge');
+            if(badge) badge.classList.add('hidden');
+        });
+        showToast('✅ 최신 데이터로 업데이트됐어요!');
+    }).catch(()=>{
+        showToast('❌ 데이터 불러오기 실패');
+    }).finally(()=>{
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.animation = '';
     });
-}).catch(e=>{
+}
+
+function showToast(msg){
+    let toast = document.getElementById('refresh-toast');
+    if(!toast){
+        toast = document.createElement('div');
+        toast.id = 'refresh-toast';
+        toast.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+            background:#1f2937;color:white;padding:10px 20px;border-radius:24px;
+            font-size:13px;font-weight:700;z-index:9999;opacity:0;
+            transition:opacity 0.3s;pointer-events:none;white-space:nowrap;`;
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(()=>{ toast.style.opacity='0'; }, 2500);
+}
+
+// spin 애니메이션 CSS
+const spinStyle = document.createElement('style');
+spinStyle.textContent = '@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }';
+document.head.appendChild(spinStyle);
+
+// 최초 로드
+loadData().catch(e=>{
     document.getElementById('update-time').innerText='데이터 로딩 대기중';
     console.error(e);
 });
-// 초기 계산 실행 (모든 함수 선언 후)
+
+// 화면 크기 변경 시 전체내역 재렌더링
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=>{
+        ['mangam','gamgyul','hobak'].forEach(cat=>applyFilter(cat));
+    }, 200);
+});
+
+// 초기 계산 실행
 calcProfit();
 </script>
 </body>
