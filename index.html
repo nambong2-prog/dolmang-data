@@ -1659,9 +1659,10 @@ function fillTodayPrice(){
 // ── 데이터 로드 ───────────────────────────────────────────────
 function loadData(){
     const v='?v='+Date.now();
+    const fetchOpts = { cache: 'no-store' };
     return Promise.all([
-        fetch('data.json'+v).then(r=>r.json()),
-        fetch('trend.json'+v).then(r=>r.json()).catch(()=>({}))
+        fetch('data.json'+v, fetchOpts).then(r=>r.json()),
+        fetch('trend.json'+v, fetchOpts).then(r=>r.json()).catch(()=>({}))
     ]).then(([data, trend])=>{
         document.getElementById('update-time').innerText='업데이트: '+data.update_time;
         window._currentStats = { mangam: data.mangam, gamgyul: data.gamgyul, hobak: data.hobak };
