@@ -4,17 +4,15 @@ import os
 from datetime import datetime
 
 API_KEY = os.environ.get("API_KEY")
-today = datetime.now().strftime("%Y%m%d")
+today = datetime.now().strftime("%Y-%m-%d")
 
-url = "https://apis.data.go.kr/B552845/katRealTime2/katRealTime2"
+url = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 params = {
     'serviceKey': API_KEY,
-    'saleDate': today,
-    'productClsCode': '02',
-    'categoryCode': '400',
-    '_type': 'json',
+    'returnType': 'JSON',
     'numOfRows': '9999',
-    'pageNo': '1'
+    'pageNo': '1',
+    'cond[trd_clcln_ymd::EQ]': today
 }
 
 target_fruits = ['감귤', '한라봉', '레드향', '천혜향', '황금향']
@@ -32,27 +30,32 @@ try:
 except Exception as e:
     print(f"API 실패: {e}")
     raw_data = [
-        {"mrktnm": "서울가락", "cprnm": "서울청과", "prdlstnm": "감귤", "stdunitnewnm": "5kg", "sbidprc": 25000, "delngqy": 50},
-        {"mrktnm": "부산엄궁", "cprnm": "항도청과", "prdlstnm": "레드향", "stdunitnewnm": "5kg", "sbidprc": 42000, "delngqy": 100},
-        {"mrktnm": "구리시장", "cprnm": "구리청과", "prdlstnm": "천혜향", "stdunitnewnm": "5kg", "sbidprc": 38000, "delngqy": 30},
-        {"mrktnm": "대전노은", "cprnm": "대전청과", "prdlstnm": "한라봉", "stdunitnewnm": "3kg", "sbidprc": 35000, "delngqy": 25},
-        {"mrktnm": "서울가락", "cprnm": "서울청과", "prdlstnm": "황금향", "stdunitnewnm": "5kg", "sbidprc": 38000, "delngqy": 40}
+        {"whsl_mrkt_nm": "서울가락", "corp_nm": "서울청과", "corp_gds_item_nm": "감귤", "pkg_nm": "5kg", "scsbd_prc": 25000, "qty": 50},
+        {"whsl_mrkt_nm": "부산엄궁", "corp_nm": "항도청과", "corp_gds_item_nm": "레드향", "pkg_nm": "5kg", "scsbd_prc": 42000, "qty": 100},
+        {"whsl_mrkt_nm": "구리시장", "corp_nm": "구리청과", "corp_gds_item_nm": "천혜향", "pkg_nm": "5kg", "scsbd_prc": 38000, "qty": 30},
+        {"whsl_mrkt_nm": "대전노은", "corp_nm": "대전청과", "corp_gds_item_nm": "한라봉", "pkg_nm": "3kg", "scsbd_prc": 35000, "qty": 25},
+        {"whsl_mrkt_nm": "서울가락", "corp_nm": "서울청과", "corp_gds_item_nm": "황금향", "pkg_nm": "5kg", "scsbd_prc": 38000, "qty": 40}
     ]
 
 filtered_data = []
 for item in raw_data:
-    name = item.get('prdlstnm') or item.get('prdlstNm') or item.get('productName') or ''
+    name = item.get('corp_gds_item_nm') or item.get('gds_sclsf_nm') or ''
     fruit_name = next((f for f in target_fruits if f in name), None)
     if not fruit_name:
         continue
     filtered_data.append({
-        "도매시장": item.get('mrktnm') or item.get('marketNm') or '',
-        "법인": item.get('cprnm') or item.get('cprNm') or '',
+        "도매시장": item.get('whsl_mrkt_nm') or '',
+        "법인": item.get('corp_nm') or '',
         "품종": fruit_name,
         "세부품목": name,
-        "규격": item.get('stdunitnewnm') or item.get('stdUnitNewNm') or '',
-        "경락가": int(item.get('sbidprc') or item.get('sbidPrc') or 0),
-        "거래량": int(item.get('delngqy') or item.get('delngQy') or 0)
+        "품종명": item.get('corp_gds_vrty_nm') or '',
+        "원산지": item.get('plor_nm') or '',
+        "규격": item.get('pkg_nm') or '',
+        "단위": item.get('unit_nm') or '',
+        "경락가": int(float(item.get('scsbd_prc') or 0)),
+        "거래량": int(float(item.get('qty') or 0)),
+        "낙찰일시": item.get('scsbd_dt') or '',
+        "매매방법": item.get('trd_se') or ''
     })
 
 top6_data = {f: [] for f in target_fruits}
