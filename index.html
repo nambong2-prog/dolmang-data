@@ -24,6 +24,8 @@
         /* ── 테이블 ── */
         .data-table { width:100%; border-collapse:collapse; background:white; font-size:0.78rem; }
         .data-table th { background:#c2410c; color:white; font-weight:700; padding:10px 10px; text-align:center; position:sticky; top:0; z-index:5; white-space:nowrap; }
+        .data-table th.sortable { cursor:pointer; user-select:none; }
+        .data-table th.sortable:hover { background:#9a3412; }
         .data-table td { padding:9px 10px; text-align:center; border-bottom:1px solid #f3f4f6; white-space:nowrap; }
         .data-table tr:active td { background:#fff7ed; }
         .top50-table th { background:#1d4ed8; }
@@ -260,7 +262,7 @@
                 <h2 class="font-bold text-gray-800 text-sm">📋 경매 전체 거래내역</h2>
                 <div class="flex items-center gap-2">
                     <span id="mangam-filter-count" class="text-xs text-gray-400 font-bold"></span>
-                    <button onclick="toggleSort('mangam')" id="mangam-sort-btn" class="text-xs text-blue-500 font-bold px-2 py-1 rounded-lg border border-blue-200 bg-blue-50 whitespace-nowrap">NO순 ↕</button>
+                    <button onclick="resetFilter('mangam')" class="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg border border-gray-200 whitespace-nowrap">정렬초기화</button>
                 </div>
             </div>
             <div class="filter-bar mx-3 mt-3 mb-2">
@@ -331,7 +333,7 @@
                 <h2 class="font-bold text-gray-800 text-sm">📋 경매 전체 거래내역</h2>
                 <div class="flex items-center gap-2">
                     <span id="gamgyul-filter-count" class="text-xs text-gray-400 font-bold"></span>
-                    <button onclick="toggleSort('gamgyul')" id="gamgyul-sort-btn" class="text-xs text-blue-500 font-bold px-2 py-1 rounded-lg border border-blue-200 bg-blue-50 whitespace-nowrap">NO순 ↕</button>
+                    <button onclick="resetFilter('gamgyul')" class="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg border border-gray-200 whitespace-nowrap">정렬초기화</button>
                 </div>
             </div>
             <div class="filter-bar mx-3 mt-3 mb-2">
@@ -402,7 +404,7 @@
                 <h2 class="font-bold text-gray-800 text-sm">📋 경매 전체 거래내역</h2>
                 <div class="flex items-center gap-2">
                     <span id="hobak-filter-count" class="text-xs text-gray-400 font-bold"></span>
-                    <button onclick="toggleSort('hobak')" id="hobak-sort-btn" class="text-xs text-blue-500 font-bold px-2 py-1 rounded-lg border border-blue-200 bg-blue-50 whitespace-nowrap">NO순 ↕</button>
+                    <button onclick="resetFilter('hobak')" class="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg border border-gray-200 whitespace-nowrap">정렬초기화</button>
                 </div>
             </div>
             <div class="filter-bar mx-3 mt-3 mb-2">
@@ -857,14 +859,16 @@ function renderMarketTop6(containerId,marketData){
                         <td colspan="5" class="p-0">
                             <table class="w-full text-xs bg-emerald-50">
                                 <thead><tr class="bg-emerald-200 text-emerald-800">
-                                    <th class="py-1 px-3 text-left">법인명</th>
+                                    <th class="py-1 px-3 text-left">법인 <span class="font-normal text-emerald-500">(상위3)</span></th>
                                     <th class="py-1 px-2">상위50%평균</th>
                                     <th class="py-1 px-2">전체평균</th>
                                     <th class="py-1 px-2">최고가</th>
                                     <th class="py-1 px-2">거래량</th>
                                 </tr></thead>
-                                <tbody>${corps.map(c=>`<tr class="border-b border-emerald-100">
-                                    <td class="py-1.5 px-3 font-bold text-emerald-800">${c.법인}</td>
+                                <tbody>${corps.slice(0,3).map((c,ci)=>`<tr class="border-b border-emerald-100">
+                                    <td class="py-1.5 px-3 font-bold text-emerald-800">
+                                        <span class="text-xs ${ci===0?'text-yellow-500':ci===1?'text-gray-400':'text-amber-600'} mr-1">${ci===0?'①':ci===1?'②':'③'}</span>${c.법인}
+                                    </td>
                                     <td class="py-1.5 px-2 text-center font-black text-emerald-700">${fmt(c.상위50평균가)}원</td>
                                     <td class="py-1.5 px-2 text-center text-gray-500">${fmt(c.평균가)}원</td>
                                     <td class="py-1.5 px-2 text-center text-red-400">${fmt(c.최고가)}원</td>
@@ -873,9 +877,10 @@ function renderMarketTop6(containerId,marketData){
                             </table>
                         </td>
                     </tr>`:'';
-                    return `<tr class="border-b border-emerald-50 hover:bg-emerald-50 cursor-pointer" onclick="toggleCorp('corp_${rowId}',this)">
+                    const hasCorps = corps.length > 0;
+                    return `<tr class="border-b border-emerald-50 ${hasCorps?'hover:bg-emerald-50 cursor-pointer':''}" ${hasCorps?`onclick="toggleCorp('corp_${rowId}',this)"`:''}>
                         <td class="py-2 px-2 text-center ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'text-gray-400 font-bold'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
-                        <td class="font-bold text-gray-700 px-2">${m.시장명} ${corps.length?'<span class="text-emerald-400 text-xs">▼</span>':''}</td>
+                        <td class="font-bold text-gray-700 px-2">${m.시장명} ${hasCorps?'<span class="text-emerald-400 text-xs">▼</span>':''}</td>
                         <td class="text-center font-black text-emerald-600 px-2">${fmt(m.상위50평균가)}원</td>
                         <td class="text-center text-gray-400 px-2">${fmt(m.평균가)}원</td>
                         <td class="text-center text-gray-500 px-2">${fmt(m.거래량)}박스</td>
@@ -989,6 +994,9 @@ function renderJungga(containerId, data, rawRows){
 
 // ── 전체내역 필터 ─────────────────────────────────────────────
 const totalData={};
+// sortState: { col: 'variety'|'market'|'corp'|'spec'|'price'|'qty'|'time', dir: 'asc'|'desc' }
+const _sortState = {};
+
 function buildFilters(cat,data){
     totalData[cat]=data;
     const label = cat==='hobak' ? '품목' : '품종';
@@ -1000,6 +1008,7 @@ function buildFilters(cat,data){
     document.getElementById(cat+'-filter-market').innerHTML=`<option value="">시장 전체</option>`+markets.map(m=>`<option value="${m}">${m}</option>`).join('');
     applyFilter(cat);
 }
+
 function applyFilter(cat){
     const data=totalData[cat]||[];
     const vf=document.getElementById(cat+'-filter-variety').value;
@@ -1030,38 +1039,60 @@ function applyFilter(cat){
         return true;
     });
 
-    // 정렬 적용
-    const sortMode = (window._sortState||{})[cat] || 'default';
-    if(sortMode === 'variety'){
+    // 컬럼 정렬 적용
+    const ss = _sortState[cat];
+    if(ss){
+        const {col, dir} = ss;
+        const mul = dir==='asc' ? 1 : -1;
         filtered.sort((a,b)=>{
-            const va=a.품종||a.품목||'', vb=b.품종||b.품목||'';
-            return va.localeCompare(vb,'ko') || parseKg(a.규격)-parseKg(b.규격);
+            let va, vb;
+            if(col==='variety')  { va=a.품종||a.품목||''; vb=b.품종||b.품목||''; return mul*va.localeCompare(vb,'ko'); }
+            if(col==='market')   { va=a.도매시장||''; vb=b.도매시장||''; return mul*va.localeCompare(vb,'ko'); }
+            if(col==='corp')     { va=a.법인||''; vb=b.법인||''; return mul*va.localeCompare(vb,'ko'); }
+            if(col==='spec')     { return mul*(parseKg(a.규격)-parseKg(b.규격)); }
+            if(col==='price')    { return mul*(a.경락가-b.경락가); }
+            if(col==='qty')      { return mul*(a.거래량-b.거래량); }
+            if(col==='time')     { va=a.낙찰일시||''; vb=b.낙찰일시||''; return mul*va.localeCompare(vb); }
+            return 0;
         });
     }
 
     const ce=document.getElementById(cat+'-filter-count');
     if(ce) ce.innerText=`총 ${filtered.length.toLocaleString()}건`;
-    renderTotal(cat+'-total-container', filtered, medians);
+    renderTotal(cat+'-total-container', filtered, medians, cat);
 }
-const _sortState={};
-function toggleSort(cat){
-    if(!_sortState[cat]||_sortState[cat]==='default') _sortState[cat]='variety';
-    else _sortState[cat]='default';
-    window._sortState=_sortState;
-    const btn=document.getElementById(cat+'-sort-btn');
-    if(btn) btn.textContent=_sortState[cat]==='variety'?'품종순 ↑':'NO순 ↕';
+
+function sortCol(cat, col){
+    const ss = _sortState[cat];
+    if(ss && ss.col===col){
+        _sortState[cat] = { col, dir: ss.dir==='asc'?'desc':'asc' };
+    } else {
+        // 가격/거래량은 기본 내림차순, 나머지는 오름차순
+        const defaultDir = (col==='price'||col==='qty') ? 'desc' : 'asc';
+        _sortState[cat] = { col, dir: defaultDir };
+    }
     applyFilter(cat);
 }
+
+function sortArrow(cat, col){
+    const ss = _sortState[cat];
+    if(!ss || ss.col!==col) return '<span class="text-gray-300 ml-0.5 text-xs">↕</span>';
+    return ss.dir==='asc'
+        ? '<span class="text-yellow-300 ml-0.5 text-xs font-black">↑</span>'
+        : '<span class="text-yellow-300 ml-0.5 text-xs font-black">↓</span>';
+}
+
 function resetFilter(cat){
     ['variety','spec','market'].forEach(f=>document.getElementById(cat+'-filter-'+f).value='');
     document.getElementById(cat+'-filter-text').value='';
+    delete _sortState[cat];
     applyFilter(cat);
 }
 
 // 모바일 감지
 const isMobile = ()=> window.innerWidth < 640;
 
-function renderTotal(containerId, data, medians){
+function renderTotal(containerId, data, medians, cat){
     const el=document.getElementById(containerId);
     if(!el) return;
     if(!data||!data.length){
@@ -1076,7 +1107,7 @@ function renderTotal(containerId, data, medians){
         return r.경락가<med*0.3||r.경락가>med*3.5;
     }
 
-    // ── 모바일 카드형 (CSS로 표시/숨김) ──────────────────────
+    // ── 모바일 카드형 ─────────────────────────────────────────
     const cardsHtml = `<div class="total-mobile-cards sm:hidden">${data.map((r,i)=>{
         const v=r.품종||r.품목||'';
         const outlier=isOutlier(r);
@@ -1099,25 +1130,35 @@ function renderTotal(containerId, data, medians){
         </div>`;
     }).join('')}</div>`;
 
-    // ── PC 테이블형 (CSS로 표시/숨김) ────────────────────────
+    // ── PC 테이블형 - 클릭 정렬 헤더 ────────────────────────
+    const thStyle = 'cursor-pointer select-none hover:bg-orange-700 transition-colors px-2 py-2 whitespace-nowrap';
+    const c = cat || '';
     const tableHtml = `<div class="total-desktop-table hidden sm:block scroll-x"><table class="data-table">
         <thead><tr>
-            <th>NO</th><th>품종</th><th>도매시장</th><th>법인</th><th>원산지</th><th>규격</th><th>경락가</th><th>거래량</th><th>낙찰일시</th>
+            <th class="px-2 py-2 w-10">NO</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','variety')">품종${sortArrow(c,'variety')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','market')">도매시장${sortArrow(c,'market')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','corp')">법인${sortArrow(c,'corp')}</th>
+            <th class="px-2 py-2">원산지</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','spec')">규격${sortArrow(c,'spec')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','price')">경락가${sortArrow(c,'price')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','qty')">거래량${sortArrow(c,'qty')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','time')">낙찰일시${sortArrow(c,'time')}</th>
         </tr></thead>
         <tbody>${data.map((r,i)=>{
             const outlier=isOutlier(r);
             return `<tr class="${outlier?'bg-red-50':''}">
-                <td class="text-gray-300 text-xs">${i+1}</td>
-                <td class="font-bold text-gray-800">${r.품종||r.품목||''}</td>
-                <td class="font-bold text-gray-600">${r.도매시장||''}</td>
-                <td class="text-gray-400 text-xs">${r.법인||''}</td>
-                <td class="text-xs">${jeju(r.원산지)}</td>
-                <td>${r.규격||''}</td>
-                <td class="${outlier?'text-red-400 line-through':'num-up'}">${fmt(r.경락가)}원
+                <td class="text-gray-300 text-xs px-2">${i+1}</td>
+                <td class="font-bold text-gray-800 px-2">${r.품종||r.품목||''}</td>
+                <td class="font-bold text-gray-600 px-2">${r.도매시장||''}</td>
+                <td class="text-gray-400 text-xs px-2">${r.법인||''}</td>
+                <td class="text-xs px-2">${jeju(r.원산지)}</td>
+                <td class="px-2">${r.규격||''}</td>
+                <td class="px-2 ${outlier?'text-red-400 line-through':'num-up'}">${fmt(r.경락가)}원
                     ${outlier?'<span class="ml-1 text-xs bg-red-100 text-red-500 px-1 rounded">이상값</span>':''}
                 </td>
-                <td class="text-gray-600">${fmt(r.거래량)}</td>
-                <td class="text-gray-400 text-xs">${r.낙찰일시||''}</td>
+                <td class="text-gray-600 px-2">${fmt(r.거래량)}</td>
+                <td class="text-gray-400 text-xs px-2">${r.낙찰일시||''}</td>
             </tr>`;
         }).join('')}</tbody>
     </table></div>`;
