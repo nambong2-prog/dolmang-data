@@ -1,10 +1,12 @@
 import requests
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+KST = timezone(timedelta(hours=9))
 
 API_KEY = os.environ.get("API_KEY")
-today = datetime.now().strftime("%Y-%m-%d")
+today = datetime.now(KST).strftime("%Y-%m-%d")
 
 BASE_URL = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 
@@ -396,7 +398,7 @@ if not mangam_data and not gamgyul_data and not hobak_data:
             {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"서울가락","법인":"서울청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":24000+price_offset,"거래량":100,"낙찰일시":dt,"매매방법":"정가수의(예약형)","is_auction":False},
         ]
 
-    base_date = datetime.now()
+    base_date = datetime.now(KST)
     # 주말 제외하고 최근 7영업일 날짜 생성
     sample_dates = []
     check = base_date - timedelta(days=1)  # 어제부터 역순
@@ -452,7 +454,7 @@ print(f"trend.json 저장: mangam {len(trend['mangam'])}일치")
 
 # ── data.json 저장 ──
 output = {
-    "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    "update_time": datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S"),
     "mangam":  mangam_stats,
     "gamgyul": gamgyul_stats,
     "hobak":   hobak_stats,
