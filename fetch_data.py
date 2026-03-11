@@ -355,111 +355,43 @@ def update_trend(trend, cat, snapshots, date_str, daily_report=None):
 
 
 # ============================================================
-# 메인 실행
+# 패치 메인 실행
 # ============================================================
-print(f"API 데이터 수집 시작: {today}")
-all_items = fetch_all_pages(today)
-print(f"감귤/만감류 수집 완료: {len(all_items)}건")
+_env_date = os.environ.get("PATCH_DATE", "")
+if _env_date:
+    PATCH_DATE = _env_date.strip()
+else:
+    PATCH_DATE = (datetime.now(KST) - timedelta(days=1)).strftime("%Y-%m-%d")
 
-mangam_data, gamgyul_data, hobak_data = filter_items(all_items)
-print(f"만감류: {len(mangam_data)}건 / 감귤: {len(gamgyul_data)}건 / 제주호박: {len(hobak_data)}건")
+print(f"=== {PATCH_DATE} 데이터 패치 시작 ===")
 
-# 데이터 없을 때 샘플
+raw = fetch_all_pages(PATCH_DATE)
+print(f"총 {len(raw)}건 수집")
+
+mangam_data, gamgyul_data, hobak_data = filter_items(raw)
+print(f"만감류 {len(mangam_data)}건 / 감귤 {len(gamgyul_data)}건 / 호박 {len(hobak_data)}건")
+
 if not mangam_data and not gamgyul_data and not hobak_data:
-    print("실제 데이터 없음 - 샘플 데이터 사용")
+    print(f"⚠ {PATCH_DATE}에 수집된 제주 만감류/감귤/호박 데이터 없음 - trend.json에 빈 날짜로 저장됩니다")
 
-    from datetime import timedelta
-
-    def make_sample_day(base_date_str, price_offset=0):
-        """날짜별 만감류 샘플 (법인 3개 이상, 시장 다양)"""
-        dt = base_date_str + " 08:00:00"
-        return [
-            # 천혜향 3kg
-            {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"서울가락","법인":"서울청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":26000+price_offset,"거래량":120,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"서울가락","법인":"한국청과㈜","원산지":"제주특별자치도","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":25000+price_offset,"거래량":80,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"서울가락","법인":"중앙청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":24500+price_offset,"거래량":60,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            # 천혜향 5kg
-            {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"부산반여","법인":"부산서부청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":38000+price_offset,"거래량":80,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"부산반여","법인":"동부청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":37000+price_offset,"거래량":55,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"부산반여","법인":"부산청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":36500+price_offset,"거래량":40,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            # 레드향 3kg
-            {"카테고리":"만감류","품종":"레드향","품목":"감귤","도매시장":"서울가락","법인":"서울청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":32000+price_offset,"거래량":90,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"레드향","품목":"감귤","도매시장":"서울가락","법인":"한국청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":31000+price_offset,"거래량":70,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"레드향","품목":"감귤","도매시장":"서울가락","법인":"중앙청과㈜","원산지":"제주특별자치도","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":30500+price_offset,"거래량":50,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            # 레드향 5kg
-            {"카테고리":"만감류","품종":"레드향","품목":"감귤","도매시장":"구리","법인":"구리농산물㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":45000+price_offset,"거래량":40,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"레드향","품목":"감귤","도매시장":"구리","법인":"구리청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":44000+price_offset,"거래량":30,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"레드향","품목":"감귤","도매시장":"구리","법인":"중부청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":43500+price_offset,"거래량":25,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            # 한라봉 3kg
-            {"카테고리":"만감류","품종":"한라봉","품목":"감귤","도매시장":"서울가락","법인":"한국청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":22000+price_offset,"거래량":60,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"한라봉","품목":"감귤","도매시장":"서울가락","법인":"서울청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":21500+price_offset,"거래량":45,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            {"카테고리":"만감류","품종":"한라봉","품목":"감귤","도매시장":"서울가락","법인":"중앙청과㈜","원산지":"제주특별자치도","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":21000+price_offset,"거래량":35,"낙찰일시":dt,"매매방법":"경매","is_auction":True},
-            # 정가수의
-            {"카테고리":"만감류","품종":"천혜향","품목":"감귤","도매시장":"서울가락","법인":"서울청과㈜","원산지":"제주특별자치도 서귀포시","규격":"3kg","단위":"kg","단위수량":3.0,"경락가":24000+price_offset,"거래량":100,"낙찰일시":dt,"매매방법":"정가수의(예약형)","is_auction":False},
-        ]
-
-    base_date = datetime.now(KST)
-    # 주말 제외하고 최근 7영업일 날짜 생성
-    sample_dates = []
-    check = base_date - timedelta(days=1)  # 어제부터 역순
-    while len(sample_dates) < 7:
-        if check.weekday() < 5:  # 월~금
-            sample_dates.append(check.strftime("%Y-%m-%d"))
-        check -= timedelta(days=1)
-
-    # trend.json에 7일치 샘플 미리 삽입
-    trend_tmp = load_trend("trend.json")
-    for i, d in enumerate(sample_dates):
-        offset = (i - 3) * 500  # 날짜마다 가격 약간 변동
-        day_data = make_sample_day(d, offset)
-        snap = make_trend_snapshot(day_data, "품종", d)
-        stats_tmp = make_stats(day_data, "품종")
-        trend_tmp = update_trend(trend_tmp, "mangam", snap, d, stats_tmp["auction"]["daily_report"])
-        # 감귤 샘플
-        g_data = [{"카테고리":"감귤","품종":"온주밀감","품목":"감귤","도매시장":"서울가락","법인":"서울청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":18000+offset,"거래량":100,"낙찰일시":d+" 08:00:00","매매방법":"경매","is_auction":True},
-                  {"카테고리":"감귤","품종":"온주밀감","품목":"감귤","도매시장":"서울가락","법인":"한국청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":17500+offset,"거래량":80,"낙찰일시":d+" 08:00:00","매매방법":"경매","is_auction":True},
-                  {"카테고리":"감귤","품종":"온주밀감","품목":"감귤","도매시장":"부산반여","법인":"동부청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":17000+offset,"거래량":60,"낙찰일시":d+" 08:00:00","매매방법":"경매","is_auction":True}]
-        g_snap = make_trend_snapshot(g_data, "품종", d)
-        g_stats = make_stats(g_data, "품종")
-        trend_tmp = update_trend(trend_tmp, "gamgyul", g_snap, d, g_stats["auction"]["daily_report"])
-    save_trend("trend.json", trend_tmp)
-    print(f"샘플 7일치 trend.json 선삽입 완료: {sample_dates}")
-
-    # 오늘 데이터는 가장 최신 샘플 사용
-    mangam_data = make_sample_day(today, 0)
-    gamgyul_data = [
-        {"카테고리":"감귤","품종":"온주밀감","품목":"감귤","도매시장":"서울가락","법인":"서울청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":18000,"거래량":100,"낙찰일시":"","매매방법":"경매","is_auction":True},
-        {"카테고리":"감귤","품종":"온주밀감","품목":"감귤","도매시장":"서울가락","법인":"한국청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":17500,"거래량":80,"낙찰일시":"","매매방법":"경매","is_auction":True},
-        {"카테고리":"감귤","품종":"온주밀감","품목":"감귤","도매시장":"부산반여","법인":"동부청과㈜","원산지":"제주특별자치도","규격":"5kg","단위":"kg","단위수량":5.0,"경락가":17000,"거래량":60,"낙찰일시":"","매매방법":"경매","is_auction":True},
-    ]
-    hobak_data = []
-
-# ── 오늘 통계 생성 ──
-mangam_stats = make_stats(mangam_data, "품종")
+mangam_stats  = make_stats(mangam_data,  "품종")
 gamgyul_stats = make_stats(gamgyul_data, "품종")
-hobak_stats   = make_stats(hobak_data, "품목")
+hobak_stats   = make_stats(hobak_data,   "품목")
 
-# ── 가격추이 스냅샷 ──
-mangam_snap = make_trend_snapshot(mangam_data, "품종", today)
-gamgyul_snap = make_trend_snapshot(gamgyul_data, "품종", today)
-hobak_snap   = make_trend_snapshot(hobak_data, "품목", today)
+mangam_snap  = make_trend_snapshot(mangam_data,  "품종", PATCH_DATE)
+gamgyul_snap = make_trend_snapshot(gamgyul_data, "품종", PATCH_DATE)
+hobak_snap   = make_trend_snapshot(hobak_data,   "품목", PATCH_DATE)
 
-# ── 누적 trend.json 업데이트 ──
 trend = load_trend("trend.json")
-trend = update_trend(trend, "mangam",  mangam_snap,  today, mangam_stats["auction"]["daily_report"])
-trend = update_trend(trend, "gamgyul", gamgyul_snap, today, gamgyul_stats["auction"]["daily_report"])
-trend = update_trend(trend, "hobak",   hobak_snap,   today, hobak_stats["auction"]["daily_report"])
+before = sorted(trend.get("mangam", {}).keys())
+print(f"패치 전 날짜: {before}")
+
+trend = update_trend(trend, "mangam",  mangam_snap,  PATCH_DATE, mangam_stats["auction"]["daily_report"])
+trend = update_trend(trend, "gamgyul", gamgyul_snap, PATCH_DATE, gamgyul_stats["auction"]["daily_report"])
+trend = update_trend(trend, "hobak",   hobak_snap,   PATCH_DATE, hobak_stats["auction"]["daily_report"])
+
 save_trend("trend.json", trend)
-print(f"trend.json 저장: mangam {len(trend['mangam'])}일치")
-
-# ── data.json 저장 ──
-output = {
-    "update_time": datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S"),
-    "mangam":  mangam_stats,
-    "gamgyul": gamgyul_stats,
-    "hobak":   hobak_stats,
-}
-with open("data.json", "w", encoding="utf-8") as f:
-    json.dump(output, f, ensure_ascii=False, indent=2)
-
-print("data.json 저장 완료")
+after = sorted(trend.get("mangam", {}).keys())
+print(f"패치 후 날짜: {after}")
+print(f"만감류 스냅샷: {len(mangam_snap)}건, 일일리포트: {len(mangam_stats['auction']['daily_report'])}건")
+print(f"=== 패치 완료: {PATCH_DATE} 추가됨 ===")
