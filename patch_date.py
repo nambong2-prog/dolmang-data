@@ -416,9 +416,9 @@ else:
     before = sorted(trend.get("mangam", {}).keys())
     print(f"패치 전 날짜: {before}")
 
-    trend = update_trend(trend, "mangam",  mangam_snap,  PATCH_DATE, mangam_stats["auction"]["daily_report"])
-    trend = update_trend(trend, "gamgyul", gamgyul_snap, PATCH_DATE, gamgyul_stats["auction"]["daily_report"])
-    trend = update_trend(trend, "hobak",   hobak_snap,   PATCH_DATE, hobak_stats["auction"]["daily_report"])
+    trend = update_trend(trend, "mangam",  mangam_snap,  PATCH_DATE, mangam_stats["auction"]["daily_report"],  mangam_stats["auction"]["market_top6"])
+    trend = update_trend(trend, "gamgyul", gamgyul_snap, PATCH_DATE, gamgyul_stats["auction"]["daily_report"], gamgyul_stats["auction"]["market_top6"])
+    trend = update_trend(trend, "hobak",   hobak_snap,   PATCH_DATE, hobak_stats["auction"]["daily_report"],   hobak_stats["auction"]["market_top6"])
 
     save_trend("trend.json", trend)
     after = sorted(trend.get("mangam", {}).keys())
