@@ -1,0 +1,40 @@
+name: Patch Missing Date
+
+on:
+  workflow_dispatch:
+    inputs:
+      patch_date:
+        description: '추가할 날짜 (예: 2026-03-10)'
+        required: true
+        default: '2026-03-10'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run patch script
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          PATCH_DATE: ${{ github.event.inputs.patch_date }}
+        run: python patch_date.py
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "Dolmang Bot"
+          git config --global user.email "bot@dolmang.com"
+          git add data.json trend.json
+          git commit -m "Patch missing date: ${{ github.event.inputs.patch_date }}" || echo "No changes"
+          git push
