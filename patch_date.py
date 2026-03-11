@@ -325,10 +325,11 @@ def save_trend(path, trend):
         json.dump(trend, f, ensure_ascii=False, indent=2)
 
 
-def update_trend(trend, cat, snapshots, date_str, daily_report=None):
+def update_trend(trend, cat, snapshots, date_str, daily_report=None, market_top6=None):
     """
     trend[cat][날짜] = [스냅샷 목록]
     trend[cat+'_daily'][날짜] = daily_report (일일리포트 날짜별 보관)
+    trend[cat+'_market'][날짜] = market_top6 (시장TOP6 날짜별 보관)
     최대 HISTORY_DAYS일치만 보관
     """
     if cat not in trend:
@@ -345,6 +346,17 @@ def update_trend(trend, cat, snapshots, date_str, daily_report=None):
         if len(dates_d) > HISTORY_DAYS:
             for old in dates_d[:-HISTORY_DAYS]:
                 del trend[dkey][old]
+
+    # 날짜별 market_top6 저장
+    if market_top6 is not None:
+        mkey = cat + "_market"
+        if mkey not in trend:
+            trend[mkey] = {}
+        trend[mkey][date_str] = market_top6
+        dates_m = sorted(trend[mkey].keys())
+        if len(dates_m) > HISTORY_DAYS:
+            for old in dates_m[:-HISTORY_DAYS]:
+                del trend[mkey][old]
 
     # 오래된 날짜 제거
     dates = sorted(trend[cat].keys())
