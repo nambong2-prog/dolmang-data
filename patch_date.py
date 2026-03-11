@@ -1,31 +1,23 @@
-"""
-특정 날짜 하나를 trend.json에 추가하는 패치 스크립트
-GitHub Actions에서 수동으로 실행
-"""
 import requests
 import json
 import os
 from datetime import datetime, timezone, timedelta
 
 KST = timezone(timedelta(hours=9))
+
 API_KEY = os.environ.get("API_KEY")
+today = datetime.now(KST).strftime("%Y-%m-%d")
+
 BASE_URL = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 
-# 환경변수에서 날짜 읽기 (없으면 어제 날짜 자동 사용)
-_env_date = os.environ.get("PATCH_DATE", "")
-if _env_date:
-    PATCH_DATE = _env_date
-else:
-    PATCH_DATE = (datetime.now(KST) - timedelta(days=1)).strftime("%Y-%m-%d")
-
 MANGAM_VARIETIES = ["레드향", "천혜향", "한라봉", "카라향"]
-HOBAK_ITEMS      = ["미니밤호박", "단호박"]
-JEJU_ORIGINS     = ["제주"]
-TARGET_LCLSF     = ["06"]
-HISTORY_DAYS     = 60
+HOBAK_ITEMS = ["미니밤호박", "단호박"]
+JEJU_ORIGINS = ["제주"]
+TARGET_LCLSF = ["06"]
 
+# 누적 데이터 보관 일수
+HISTORY_DAYS = 60
 
-# ── fetch_data.py 와 동일한 함수들 ──────────────────────────
 
 def fetch_all_pages(date_str):
     all_items = []
@@ -44,13 +36,13 @@ def fetch_all_pages(date_str):
                 total = body.get("totalCount", 0)
                 items = body.get("items", {})
                 if not items:
-                    print(f"  {lclsf_cd}: 데이터 없음")
+                    print(f"  대분류 {lclsf_cd}: 데이터 없음")
                     break
                 item_list = items.get("item", [])
                 if isinstance(item_list, dict):
                     item_list = [item_list]
                 all_items.extend(item_list)
-                print(f"  페이지 {page}: {len(item_list)}건 (전체 {total})")
+                print(f"  대분류 {lclsf_cd} / 페이지 {page}: {len(item_list)}건 (누적 {len(all_items)}, 전체 {total})")
                 if page * 1000 >= total:
                     break
                 page += 1
@@ -60,113 +52,264 @@ def fetch_all_pages(date_str):
     return all_items
 
 
-def classify(raw):
-    mangam, gamgyul, hobak = [], [], []
-    for item in raw:
-        gds_nm   = item.get("gdsNm", "")
-        orgn_nm  = item.get("orgnNm", "") or ""
-        lsps_nm  = item.get("lspsNm", "") or ""
-        method   = item.get("mmthdNm", "") or ""
-        prc      = float(item.get("trdPrc", 0) or 0)
-        qty      = float(item.get("trdQy",  0) or 0)
-        dt       = item.get("trdDe", "") or ""
-        mkt      = item.get("mtsNm", "") or ""
-        unit     = item.get("trdUntNm", "") or ""
-        unit_qty = float(item.get("trdUntQy", 0) or 0)
+def parse_item(item, category, group_key):
+    vrty_nm = (item.get("corp_gds_vrty_nm") or "").strip()
+    item_nm = (item.get("corp_gds_item_nm") or "").strip()
+    plor_nm = (item.get("plor_nm") or "").strip()
+    trd_se = (item.get("trd_se") or "").strip()
+    unit_qty = float(item.get("unit_qty") or 0)
 
-        is_jeju   = any(o in orgn_nm for o in JEJU_ORIGINS)
-        is_auction = "경매" in method
+    try:
+        kg = float(unit_qty)
+        spec = f"{int(kg)}kg" if kg > 0 and kg == int(kg) else (f"{kg}kg" if kg > 0 else (item.get("pkg_nm") or ""))
+    except:
+        spec = (item.get("pkg_nm") or "")
 
-        row = {
-            "도매시장": mkt, "법인": lsps_nm, "원산지": orgn_nm,
-            "규격": unit, "단위": "kg", "단위수량": unit_qty,
-            "경락가": prc, "거래량": qty,
-            "낙찰일시": dt, "매매방법": method, "is_auction": is_auction,
+    return {
+        "카테고리": category,
+        "품종": vrty_nm if group_key == "품종" else item_nm,
+        "품목": item_nm,
+        "도매시장": (item.get("whsl_mrkt_nm") or ""),
+        "법인": (item.get("corp_nm") or ""),
+        "원산지": plor_nm,
+        "규격": spec,
+        "단위": (item.get("unit_nm") or ""),
+        "단위수량": unit_qty,          # float으로 저장 (총중량 계산용)
+        "경락가": int(float(item.get("scsbd_prc") or 0)),
+        "거래량": int(float(item.get("qty") or 0)),
+        "낙찰일시": (item.get("scsbd_dt") or ""),
+        "매매방법": trd_se,
+        "is_auction": "정가수의" not in trd_se,
+    }
+
+
+def filter_items(all_items):
+    mangam_data, gamgyul_data, hobak_data = [], [], []
+    for item in all_items:
+        vrty_nm = (item.get("corp_gds_vrty_nm") or "").strip()
+        item_nm = (item.get("corp_gds_item_nm") or "").strip()
+        plor_nm = (item.get("plor_nm") or "").strip()
+        mclsf_cd = (item.get("gds_mclsf_cd") or "").strip()
+
+        if mclsf_cd == "15" and vrty_nm in MANGAM_VARIETIES:
+            mangam_data.append(parse_item(item, "만감류", "품종"))
+        elif mclsf_cd != "15" and "감귤" in item_nm:
+            gamgyul_data.append(parse_item(item, "감귤", "품종"))
+        elif any(h in item_nm for h in HOBAK_ITEMS):
+            if any(j in plor_nm for j in JEJU_ORIGINS):
+                hobak_data.append(parse_item(item, "호박", "품목"))
+    return mangam_data, gamgyul_data, hobak_data
+
+
+def remove_outliers(records):
+    """
+    IQR 방식으로 이상값 제거.
+    경락가 기준 중앙값의 0.3배 ~ 3.5배 범위 밖은 제거.
+    건수가 4건 미만이면 그대로 반환 (샘플 부족).
+    """
+    if len(records) < 4:
+        return records
+    prices = sorted(r["price"] for r in records)
+    n = len(prices)
+    median = prices[n // 2] if n % 2 == 1 else (prices[n//2-1] + prices[n//2]) / 2
+    lo = median * 0.3
+    hi = median * 3.5
+    filtered = [r for r in records if lo <= r["price"] <= hi]
+    # 필터 후 너무 많이 줄면 원본 반환 (이상값이 아닐 수 있음)
+    if len(filtered) < max(1, len(records) * 0.5):
+        return records
+    removed = len(records) - len(filtered)
+    if removed > 0:
+        print(f"    이상값 {removed}건 제거 (기준: {int(lo):,}~{int(hi):,}원, 중앙값 {int(median):,}원)")
+    return filtered
+
+
+def make_stats(data_list, group_key="품종"):
+    auction = [r for r in data_list if r.get("is_auction")]
+    jungga  = [r for r in data_list if not r.get("is_auction")]
+
+    def calc(rows):
+        daily_report  = {}
+        market_detail = {}
+
+        for row in rows:
+            f  = row[group_key]
+            m  = row["도매시장"]
+            s  = row["규격"]
+            p  = row["경락가"]
+            q  = row["거래량"]
+            uq = float(row.get("단위수량") or 0)   # 박스당 kg
+
+            # ── 일일리포트 (품종+규격별) ──
+            dk = f"{f}_{s}"
+            if dk not in daily_report:
+                daily_report[dk] = {
+                    "품종": f, "규격": s,
+                    "총거래량": 0, "총중량": 0.0, "총액": 0,
+                    "최고가": 0, "최저가": 999999,
+                    "records": []
+                }
+            daily_report[dk]["총거래량"] += q
+            daily_report[dk]["총중량"]   += q * uq
+            daily_report[dk]["총액"]     += p * q
+            daily_report[dk]["records"].append({"price": p, "qty": q, "market": m})
+            if p > daily_report[dk]["최고가"]: daily_report[dk]["최고가"] = p
+            if p < daily_report[dk]["최저가"]: daily_report[dk]["최저가"] = p
+
+            # ── 시장별 ──
+            corp = row.get("법인") or ""
+            mk = f"{f}_{s}_{m}"
+            if mk not in market_detail:
+                market_detail[mk] = {"품종": f, "규격": s, "시장명": m,
+                                     "총거래량": 0, "총액": 0, "최고가": 0,
+                                     "records": [], "법인별": {}}
+            market_detail[mk]["총거래량"] += q
+            market_detail[mk]["총액"]     += p * q
+            market_detail[mk]["records"].append({"price": p, "qty": q})
+            if p > market_detail[mk]["최고가"]: market_detail[mk]["최고가"] = p
+            if corp:
+                if corp not in market_detail[mk]["법인별"]:
+                    market_detail[mk]["법인별"][corp] = {"법인": corp, "총거래량": 0, "총액": 0, "최고가": 0, "records": []}
+                market_detail[mk]["법인별"][corp]["총거래량"] += q
+                market_detail[mk]["법인별"][corp]["총액"]     += p * q
+                market_detail[mk]["법인별"][corp]["records"].append({"price": p, "qty": q})
+                if p > market_detail[mk]["법인별"][corp]["최고가"]: market_detail[mk]["법인별"][corp]["최고가"] = p
+
+        # ── 일일리포트 마무리 ──
+        daily_list = []
+        for v in daily_report.values():
+            if v["총거래량"] > 0:
+                records = v.pop("records")
+                v["평균가"]   = round(v["총액"] / v["총거래량"])
+                v["총중량"]   = round(v["총중량"], 1)   # 소수점 1자리
+
+                # ── 이상값 제거 ──
+                clean_records = remove_outliers(records)
+
+                # ── 이상값 제거 후 평균가·최고가·최저가 재계산 ──
+                if clean_records:
+                    clean_qty = sum(r["qty"] for r in clean_records)
+                    v["평균가"]  = round(sum(r["price"]*r["qty"] for r in clean_records) / clean_qty)
+                    v["최고가"]  = max(r["price"] for r in clean_records)
+                    v["최저가"]  = min(r["price"] for r in clean_records)
+                    v["총거래량"] = clean_qty
+                    v["총중량"]  = round(sum(
+                        r["qty"] * float(next((row.get("단위수량",0) for row in rows
+                            if row["경락가"]==r["price"]), 0) or 0)
+                        for r in clean_records), 1)
+
+                # ── 상위 50% (경락가 기준 건수 상위 50%) ──
+                sorted_clean = sorted(clean_records, key=lambda x: -x["price"])
+                n50 = max(1, len(sorted_clean) // 2)     # 건수 상위 50%
+                top50_records = sorted_clean[:n50]
+
+                if top50_records:
+                    t50_qty = sum(r["qty"] for r in top50_records)
+                    v["상위50평균가"] = round(sum(r["price"]*r["qty"] for r in top50_records) / t50_qty)
+                    v["상위50기준가"] = min(r["price"] for r in top50_records)  # 상위50% 중 최저가 = 진입 기준선
+                    v["상위50거래량"] = t50_qty
+                else:
+                    v["상위50평균가"] = v["상위50기준가"] = v["상위50거래량"] = 0
+                daily_list.append(v)
+
+        # ── 시장별 TOP6 (상위50% 평균가 기준) ──
+        market_list = []
+        for v in market_detail.values():
+            if v["총거래량"] > 0:
+                v["평균가"] = round(v["총액"] / v["총거래량"])
+                # 상위50% 평균가 계산
+                recs = v["records"]
+                sorted_recs = sorted(recs, key=lambda x: -x["price"])
+                n50 = max(1, len(sorted_recs) // 2)
+                top50 = sorted_recs[:n50]
+                t50_qty = sum(r["qty"] for r in top50)
+                v["상위50평균가"] = round(sum(r["price"]*r["qty"] for r in top50) / t50_qty) if t50_qty else v["평균가"]
+                # 법인별 집계 마무리 (상위50% 평균가 계산)
+                corp_list = []
+                for cd in v["법인별"].values():
+                    cd["평균가"] = round(cd["총액"] / cd["총거래량"]) if cd["총거래량"] else 0
+                    cd_recs = cd["records"]
+                    cd_sorted = sorted(cd_recs, key=lambda x: -x["price"])
+                    cd_n50 = max(1, len(cd_sorted) // 2)
+                    cd_top50 = cd_sorted[:cd_n50]
+                    cd_t50_qty = sum(r["qty"] for r in cd_top50)
+                    cd["상위50평균가"] = round(sum(r["price"]*r["qty"] for r in cd_top50) / cd_t50_qty) if cd_t50_qty else cd["평균가"]
+                    del cd["records"]
+                    corp_list.append(cd)
+                corp_list.sort(key=lambda x: -x["상위50평균가"])
+                v["법인목록"] = corp_list[:3]   # 상위 3개 법인만 표시
+                del v["records"], v["법인별"]
+                market_list.append(v)
+
+        spec_market_top6 = {}
+        for v in market_list:
+            key = f"{v['품종']}_{v['규격']}"
+            if key not in spec_market_top6:
+                spec_market_top6[key] = {"품종": v["품종"], "규격": v["규격"], "시장목록": []}
+            spec_market_top6[key]["시장목록"].append({
+                "시장명": v["시장명"], "평균가": v["평균가"], "상위50평균가": v["상위50평균가"],
+                "최고가": v["최고가"], "거래량": v["총거래량"], "법인목록": v["법인목록"]
+            })
+        for key in spec_market_top6:
+            spec_market_top6[key]["시장목록"].sort(key=lambda x: -x["상위50평균가"])
+            spec_market_top6[key]["시장목록"] = spec_market_top6[key]["시장목록"][:6]
+
+        # ── 이상값 제거된 전체내역 별도 구성 ──
+        clean_rows = []
+        # 품종+규격별로 중앙값 계산 후 이상값 row 제거
+        group_records = {}
+        for row in rows:
+            key = f"{row[group_key]}_{row['규격']}"
+            if key not in group_records:
+                group_records[key] = []
+            group_records[key].append(row)
+
+        for key, group in group_records.items():
+            recs = [{"price": r["경락가"], "qty": r["거래량"], "_row": r} for r in group]
+            clean = remove_outliers(recs)
+            clean_rows.extend([r["_row"] for r in clean])
+
+        return {
+            "daily_report": daily_list,
+            "market_top6":  list(spec_market_top6.values()),
+            "total_history": clean_rows
         }
 
-        if any(v in gds_nm for v in MANGAM_VARIETIES) and is_jeju:
-            for v in MANGAM_VARIETIES:
-                if v in gds_nm:
-                    row["품종"] = v; row["품목"] = v; row["카테고리"] = "만감류"
-                    mangam.append(row); break
-        elif "감귤" in gds_nm and is_jeju:
-            row["품종"] = "온주밀감"; row["품목"] = "감귤"; row["카테고리"] = "감귤"
-            gamgyul.append(row)
-        elif any(h in gds_nm for h in HOBAK_ITEMS):
-            for h in HOBAK_ITEMS:
-                if h in gds_nm:
-                    row["품종"] = h; row["품목"] = h; row["카테고리"] = "호박"
-                    hobak.append(row); break
-
-    return mangam, gamgyul, hobak
-
-
-def remove_outliers(rows, price_key="경락가"):
-    if len(rows) < 3:
-        return rows
-    prices = [r[price_key] for r in rows if r[price_key] > 0]
-    if not prices:
-        return rows
-    median = sorted(prices)[len(prices)//2]
-    return [r for r in rows if 0 < r[price_key] <= median * 3.5]
-
-
-def make_stats(data, group_key):
-    from collections import defaultdict
-    groups = defaultdict(list)
-    for r in data:
-        groups[r.get(group_key,"")].append(r)
-
-    daily_report = []
-    for variety, rows in groups.items():
-        specs = defaultdict(list)
-        for r in rows:
-            specs[r.get("규격","")].append(r)
-        for spec, srows in specs.items():
-            auction_rows = [r for r in srows if r.get("is_auction")]
-            auction_rows = remove_outliers(auction_rows)
-            if not auction_rows:
-                continue
-            prices = [r["경락가"] for r in auction_rows]
-            qtys   = [r["거래량"]  for r in auction_rows]
-            total_qty = sum(qtys)
-            avg   = round(sum(p*q for p,q in zip(prices,qtys)) / total_qty) if total_qty else 0
-            sorted_p = sorted(zip(prices,qtys), reverse=True)
-            top_n = max(1, len(sorted_p)//2)
-            top50_rows = sorted_p[:top_n]
-            top50_qty = sum(q for _,q in top50_rows)
-            top50_avg = round(sum(p*q for p,q in top50_rows)/top50_qty) if top50_qty else 0
-            daily_report.append({
-                "품종": variety, "규격": spec,
-                "평균가": avg, "상위50평균가": top50_avg,
-                "최고가": max(prices), "최저가": min(prices),
-                "총거래량": int(total_qty),
-                "총중량": round(total_qty * float(spec.replace("kg","").strip() or 0) if "kg" in spec else 0, 1),
-            })
-    return {"auction": {"daily_report": daily_report}}
+    return {"auction": calc(auction), "jungga": calc(jungga)}
 
 
 def make_trend_snapshot(data_list, group_key, date_str):
-    from collections import defaultdict
-    groups = defaultdict(list)
-    for r in data_list:
-        groups[r.get(group_key,"")].append(r)
-    snapshots = []
-    for variety, rows in groups.items():
-        auction_rows = remove_outliers([r for r in rows if r.get("is_auction")])
-        if not auction_rows:
-            continue
-        prices = [r["경락가"] for r in auction_rows]
-        qtys   = [r["거래량"]  for r in auction_rows]
-        total_qty = sum(qtys)
-        avg = round(sum(p*q for p,q in zip(prices,qtys))/total_qty) if total_qty else 0
-        sorted_p = sorted(zip(prices,qtys), reverse=True)
-        top_n = max(1, len(sorted_p)//2)
-        top50_rows = sorted_p[:top_n]
-        top50_qty = sum(q for _,q in top50_rows)
-        top50_avg = round(sum(p*q for p,q in top50_rows)/top50_qty) if top50_qty else 0
-        snapshots.append({"품종": variety, "날짜": date_str, "평균가": avg, "상위50평균가": top50_avg, "거래량": int(total_qty)})
-    return snapshots
+    """
+    오늘 날짜의 품종+규격별 평균가·거래량 요약 (가격추이용)
+    auction 데이터만 사용
+    """
+    auction = [r for r in data_list if r.get("is_auction")]
+    summary = {}
+    for row in auction:
+        f  = row[group_key]
+        s  = row["규격"]
+        p  = row["경락가"]
+        q  = row["거래량"]
+        uq = float(row.get("단위수량") or 0)
+        key = f"{f}_{s}"
+        if key not in summary:
+            summary[key] = {"품종": f, "규격": s, "총액": 0, "총거래량": 0, "총중량": 0.0}
+        summary[key]["총액"]     += p * q
+        summary[key]["총거래량"] += q
+        summary[key]["총중량"]   += q * uq
+
+    result = []
+    for v in summary.values():
+        if v["총거래량"] > 0:
+            result.append({
+                "날짜":     date_str,
+                "품종":     v["품종"],
+                "규격":     v["규격"],
+                "평균가":   round(v["총액"] / v["총거래량"]),
+                "총거래량": v["총거래량"],
+                "총중량":   round(v["총중량"], 1),
+            })
+    return result
 
 
 def load_trend(path):
@@ -183,9 +326,16 @@ def save_trend(path, trend):
 
 
 def update_trend(trend, cat, snapshots, date_str, daily_report=None):
+    """
+    trend[cat][날짜] = [스냅샷 목록]
+    trend[cat+'_daily'][날짜] = daily_report (일일리포트 날짜별 보관)
+    최대 HISTORY_DAYS일치만 보관
+    """
     if cat not in trend:
         trend[cat] = {}
     trend[cat][date_str] = snapshots
+
+    # 날짜별 daily_report 저장
     if daily_report is not None:
         dkey = cat + "_daily"
         if dkey not in trend:
@@ -195,6 +345,8 @@ def update_trend(trend, cat, snapshots, date_str, daily_report=None):
         if len(dates_d) > HISTORY_DAYS:
             for old in dates_d[:-HISTORY_DAYS]:
                 del trend[dkey][old]
+
+    # 오래된 날짜 제거
     dates = sorted(trend[cat].keys())
     if len(dates) > HISTORY_DAYS:
         for old in dates[:-HISTORY_DAYS]:
@@ -202,33 +354,74 @@ def update_trend(trend, cat, snapshots, date_str, daily_report=None):
     return trend
 
 
-# ── 메인 ─────────────────────────────────────────────────────
+# ============================================================
+# 패치 메인 실행
+# ============================================================
+_env_date = os.environ.get("PATCH_DATE", "")
+if _env_date:
+    PATCH_DATE = _env_date.strip()
+else:
+    PATCH_DATE = (datetime.now(KST) - timedelta(days=1)).strftime("%Y-%m-%d")
 
 print(f"=== {PATCH_DATE} 데이터 패치 시작 ===")
 
 raw = fetch_all_pages(PATCH_DATE)
 print(f"총 {len(raw)}건 수집")
 
-mangam_data, gamgyul_data, hobak_data = classify(raw)
+# ── 원시 데이터 디버그 출력 ──
+if raw:
+    sample = raw[0]
+    print(f"[RAW 샘플 필드] {list(sample.keys())}")
+    print(f"[RAW 샘플 값] corp_gds_vrty_nm={sample.get('corp_gds_vrty_nm')} / corp_gds_item_nm={sample.get('corp_gds_item_nm')} / gds_mclsf_cd={sample.get('gds_mclsf_cd')} / plor_nm={sample.get('plor_nm')}")
+
+    # 만감류 키워드 포함 건수
+    for kw in MANGAM_VARIETIES:
+        cnt = sum(1 for r in raw if kw in str(r.get("corp_gds_vrty_nm","")) or kw in str(r.get("corp_gds_item_nm","")))
+        if cnt: print(f"  '{kw}' 포함: {cnt}건")
+
+    # mclsf_cd == "15" 건수
+    cnt15 = sum(1 for r in raw if str(r.get("gds_mclsf_cd","")).strip() == "15")
+    print(f"  gds_mclsf_cd=15: {cnt15}건")
+
+    # 제주 원산지 건수
+    jeju_cnt = sum(1 for r in raw if "제주" in str(r.get("plor_nm","")))
+    print(f"  plor_nm 제주 포함: {jeju_cnt}건")
+
+mangam_data, gamgyul_data, hobak_data = filter_items(raw)
 print(f"만감류 {len(mangam_data)}건 / 감귤 {len(gamgyul_data)}건 / 호박 {len(hobak_data)}건")
 
-mangam_stats  = make_stats(mangam_data,  "품종")
-gamgyul_stats = make_stats(gamgyul_data, "품종")
-hobak_stats   = make_stats(hobak_data,   "품목")
+if not mangam_data and not gamgyul_data and not hobak_data:
+    print(f"⚠ {PATCH_DATE} 제주 만감류/감귤/호박 없음")
+    # 빈 값이라도 날짜 등록
+    trend = load_trend("trend.json")
+    before = sorted(trend.get("mangam", {}).keys())
+    print(f"패치 전 날짜: {before}")
+    trend = update_trend(trend, "mangam",  [], PATCH_DATE, [])
+    trend = update_trend(trend, "gamgyul", [], PATCH_DATE, [])
+    trend = update_trend(trend, "hobak",   [], PATCH_DATE, [])
+    save_trend("trend.json", trend)
+    after = sorted(trend.get("mangam", {}).keys())
+    print(f"패치 후 날짜: {after}")
+    print(f"=== 패치 완료 (데이터 없음): {PATCH_DATE} ===")
+else:
+    mangam_stats  = make_stats(mangam_data,  "품종")
+    gamgyul_stats = make_stats(gamgyul_data, "품종")
+    hobak_stats   = make_stats(hobak_data,   "품목")
 
-mangam_snap  = make_trend_snapshot(mangam_data,  "품종", PATCH_DATE)
-gamgyul_snap = make_trend_snapshot(gamgyul_data, "품종", PATCH_DATE)
-hobak_snap   = make_trend_snapshot(hobak_data,   "품목", PATCH_DATE)
+    mangam_snap  = make_trend_snapshot(mangam_data,  "품종", PATCH_DATE)
+    gamgyul_snap = make_trend_snapshot(gamgyul_data, "품종", PATCH_DATE)
+    hobak_snap   = make_trend_snapshot(hobak_data,   "품목", PATCH_DATE)
 
-trend = load_trend("trend.json")
-before = sorted(trend.get("mangam", {}).keys())
-print(f"패치 전 날짜: {before}")
+    trend = load_trend("trend.json")
+    before = sorted(trend.get("mangam", {}).keys())
+    print(f"패치 전 날짜: {before}")
 
-trend = update_trend(trend, "mangam",  mangam_snap,  PATCH_DATE, mangam_stats["auction"]["daily_report"])
-trend = update_trend(trend, "gamgyul", gamgyul_snap, PATCH_DATE, gamgyul_stats["auction"]["daily_report"])
-trend = update_trend(trend, "hobak",   hobak_snap,   PATCH_DATE, hobak_stats["auction"]["daily_report"])
+    trend = update_trend(trend, "mangam",  mangam_snap,  PATCH_DATE, mangam_stats["auction"]["daily_report"])
+    trend = update_trend(trend, "gamgyul", gamgyul_snap, PATCH_DATE, gamgyul_stats["auction"]["daily_report"])
+    trend = update_trend(trend, "hobak",   hobak_snap,   PATCH_DATE, hobak_stats["auction"]["daily_report"])
 
-save_trend("trend.json", trend)
-after = sorted(trend.get("mangam", {}).keys())
-print(f"패치 후 날짜: {after}")
-print(f"=== 패치 완료: {PATCH_DATE} 추가됨 ===")
+    save_trend("trend.json", trend)
+    after = sorted(trend.get("mangam", {}).keys())
+    print(f"패치 후 날짜: {after}")
+    print(f"만감류 스냅샷: {len(mangam_snap)}건")
+    print(f"=== 패치 완료: {PATCH_DATE} 추가됨 ===")
