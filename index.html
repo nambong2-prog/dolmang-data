@@ -1230,10 +1230,12 @@ function renderTotal(containerId, data, medians, cat){
 // ── 날짜별 일일리포트 ──────────────────────────────────────────
 const dailyHistory = {};    // cat → { 날짜: daily_report[] }
 const dailySelected = {};   // cat → 선택된 날짜 ('today' or 'YYYY-MM-DD')
+const marketHistory = {};  // cat → { '2026-03-10': [...market_top6...] }
 
-function initDailyDatePicker(cat, trendDaily, todayReport){
+function initDailyDatePicker(cat, trendDaily, todayReport, trendMarket){
     if(!trendDaily) return;
     dailyHistory[cat] = trendDaily;   // { '2026-03-09': [...], ... }
+    if(trendMarket) marketHistory[cat] = trendMarket; // { '2026-03-09': [...market_top6...] }
     dailySelected[cat] = 'today';
     renderDateBar(cat);
 }
@@ -1300,10 +1302,10 @@ function selectDailyDate(cat, date){
         }
     }
 
-    // ── 시장TOP6, 정가수의, 전체내역 ── (오늘만 지원)
+    // ── 시장TOP6, 정가수의, 전체내역 ──
     const pastMsg = `<div class="py-10 text-center">
-        <p class="text-gray-300 text-sm mb-1">과거 날짜는 일일리포트·상위50%만 조회 가능</p>
-        <p class="text-xs text-gray-200">시장TOP6·정가수의·전체내역은 오늘 데이터만 제공</p>
+        <p class="text-gray-300 text-sm mb-1">해당 날짜 시장TOP6 데이터 없음</p>
+        <p class="text-xs text-gray-200">최근 수집 날짜부터 지원됩니다</p>
     </div>`;
 
     if(isToday){
@@ -1313,12 +1315,20 @@ function selectDailyDate(cat, date){
             buildFilters(cat, stats.auction?.total_history || []);
         }
     } else {
+        // 과거 날짜: trend.json에 저장된 market_top6 사용
+        const pastMarket = (marketHistory[cat] || {})[date];
         const mkt = document.getElementById(cat+'-market-container');
         const jng = document.getElementById(cat+'-jungga-container');
         const tot = document.getElementById(cat+'-total-container');
-        if(mkt) mkt.innerHTML = pastMsg;
-        if(jng) jng.innerHTML = pastMsg;
-        if(tot) tot.innerHTML = pastMsg;
+        if(mkt){
+            if(pastMarket && pastMarket.length){
+                renderMarketTop6(cat+'-market-container', pastMarket);
+            } else {
+                mkt.innerHTML = pastMsg;
+            }
+        }
+        if(jng) jng.innerHTML = `<div class="py-10 text-center"><p class="text-gray-300 text-sm">정가수의는 오늘 데이터만 제공</p></div>`;
+        if(tot) tot.innerHTML = `<div class="py-10 text-center"><p class="text-gray-300 text-sm">전체내역은 오늘 데이터만 제공</p></div>`;
     }
 }
 
@@ -1794,9 +1804,9 @@ function loadData(){
         if(trend.hobak)   initTrendControls('hobak',   trend.hobak);
 
         // 날짜별 일일리포트 선택기 초기화
-        if(trend.mangam_daily)  initDailyDatePicker('mangam',  trend.mangam_daily);
-        if(trend.gamgyul_daily) initDailyDatePicker('gamgyul', trend.gamgyul_daily);
-        if(trend.hobak_daily)   initDailyDatePicker('hobak',   trend.hobak_daily);
+        if(trend.mangam_daily)  initDailyDatePicker('mangam',  trend.mangam_daily,  null, trend.mangam_market);
+        if(trend.gamgyul_daily) initDailyDatePicker('gamgyul', trend.gamgyul_daily, null, trend.gamgyul_market);
+        if(trend.hobak_daily)   initDailyDatePicker('hobak',   trend.hobak_daily,   null, trend.hobak_market);
 
         // 수익계산기 - 오늘 경락가 힌트 설정 (9kg 경매 평균가)
         const mangamDaily = data.mangam?.auction?.daily_report || [];
