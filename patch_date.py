@@ -11,8 +11,12 @@ KST = timezone(timedelta(hours=9))
 API_KEY = os.environ.get("API_KEY")
 BASE_URL = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 
-# ★ 추가할 날짜
-PATCH_DATE = "2026-03-10"
+# 환경변수에서 날짜 읽기 (없으면 어제 날짜 자동 사용)
+_env_date = os.environ.get("PATCH_DATE", "")
+if _env_date:
+    PATCH_DATE = _env_date
+else:
+    PATCH_DATE = (datetime.now(KST) - timedelta(days=1)).strftime("%Y-%m-%d")
 
 MANGAM_VARIETIES = ["레드향", "천혜향", "한라봉", "카라향"]
 HOBAK_ITEMS      = ["미니밤호박", "단호박"]
