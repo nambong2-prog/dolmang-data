@@ -32,6 +32,7 @@ jobs:
         run: |
           git config --global user.name "Dolmang Bot"
           git config --global user.email "bot@dolmang.com"
-          git add data.json trend.json
-          git commit -m "Update auction data $(date +'%Y-%m-%d %H:%M')" || echo "No changes"
+          echo "$(date +'%Y-%m-%d %H:%M:%S') KST" > last_run.txt
+          git add data.json trend.json last_run.txt
+          git commit -m "Update auction data $(date +'%Y-%m-%d %H:%M')"
           git push
