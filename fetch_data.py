@@ -13,7 +13,7 @@ BASE_URL = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 MANGAM_VARIETIES = ["레드향", "천혜향", "한라봉", "카라향"]
 HOBAK_ITEMS = ["미니밤호박", "단호박"]
 JEJU_ORIGINS = ["제주"]
-TARGET_LCLSF = ["06"]
+TARGET_LCLSF = ["04", "05"]  # 04=과일류(만감류/감귤), 05=과채류(단호박)
 
 # 누적 데이터 보관 일수
 HISTORY_DAYS = 60
