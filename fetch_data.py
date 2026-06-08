@@ -372,6 +372,10 @@ print(f"API 데이터 수집 시작: {today}")
 all_items = fetch_all_pages(today)
 print(f"감귤/만감류 수집 완료: {len(all_items)}건")
 
+# 디버그: 첫 번째 아이템 키 확인
+if all_items:
+    print(f"첫번째아이템키: {list(all_items[0].keys())}")
+    print(f"첫번째아이템샘플: vrty={all_items[0].get('corp_gds_vrty_nm')}, item={all_items[0].get('corp_gds_item_nm')}, mclsf={all_items[0].get('gds_mclsf_cd')}")
 mangam_data, gamgyul_data, hobak_data = filter_items(all_items)
 print(f"만감류: {len(mangam_data)}건 / 감귤: {len(gamgyul_data)}건 / 제주호박: {len(hobak_data)}건")
 
