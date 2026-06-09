@@ -96,7 +96,7 @@ def filter_items(all_items):
             mangam_data.append(parse_item(item, "만감류", "품종"))
         elif mclsf_cd != "15" and "감귤" in item_nm:
             gamgyul_data.append(parse_item(item, "감귤", "품종"))
-        elif item.get("gds_lclsf_cd","") == "09" and "호박" in item_nm and vrty_nm in HOBAK_VARIETIES:
+        elif item.get("gds_lclsf_cd","") == "09" and vrty_nm in HOBAK_VARIETIES and any(j in plor_nm for j in JEJU_ORIGINS):
             hobak_data.append(parse_item(item, "호박", "품종"))
     return mangam_data, gamgyul_data, hobak_data
 
