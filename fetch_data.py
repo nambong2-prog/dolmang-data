@@ -13,7 +13,7 @@ BASE_URL = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 MANGAM_VARIETIES = ["레드향", "천혜향", "한라봉", "카라향"]
 HOBAK_ITEMS = ["호박"]  # 품목명
 HOBAK_VARIETIES = ["단호박", "미니밤호박"]  # 품종명
-JEJU_PLOR_CD = "14"  # 제주 출하지 코드
+JEJU_SAN_CD = "14"  # 제주 출하지 코드(san_cd)
 TARGET_LCLSF = ["06", "09"]  # 06=과실류(만감류/감귤), 09=과채류(호박)
 
 # 누적 데이터 보관 일수
@@ -96,7 +96,7 @@ def filter_items(all_items):
             mangam_data.append(parse_item(item, "만감류", "품종"))
         elif mclsf_cd != "15" and "감귤" in item_nm:
             gamgyul_data.append(parse_item(item, "감귤", "품종"))
-        elif item.get("gds_lclsf_cd","") == "09" and vrty_nm in HOBAK_VARIETIES and item.get("plor_cd","") == JEJU_PLOR_CD:
+        elif item.get("gds_lclsf_cd","") == "09" and vrty_nm in HOBAK_VARIETIES and item.get("san_cd","") == JEJU_SAN_CD:
             hobak_data.append(parse_item(item, "호박", "품종"))
     return mangam_data, gamgyul_data, hobak_data
 
