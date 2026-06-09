@@ -14,7 +14,7 @@ MANGAM_VARIETIES = ["레드향", "천혜향", "한라봉", "카라향"]
 HOBAK_ITEMS = ["호박"]  # 품목명
 HOBAK_VARIETIES = ["단호박", "미니밤호박"]  # 품종명
 JEJU_ORIGINS = ["제주"]  # 원산지 필드에 "제주" 포함이면 매칭
-TARGET_LCLSF = ["04", "05"]  # 04=과일류(만감류/감귤), 05=과채류(단호박)
+TARGET_LCLSF = ["06", "09"]  # 06=과실류(만감류/감귤), 09=과채류(호박)
 
 # 누적 데이터 보관 일수
 HISTORY_DAYS = 60
@@ -96,7 +96,7 @@ def filter_items(all_items):
             mangam_data.append(parse_item(item, "만감류", "품종"))
         elif mclsf_cd != "15" and "감귤" in item_nm:
             gamgyul_data.append(parse_item(item, "감귤", "품종"))
-        elif any(h in item_nm for h in HOBAK_ITEMS) and any(v in vrty_nm for v in HOBAK_VARIETIES):
+        elif item.get("gds_lclsf_cd","") == "09" and "호박" in item_nm and any(v in vrty_nm for v in HOBAK_VARIETIES):
             hobak_data.append(parse_item(item, "호박", "품종"))
     return mangam_data, gamgyul_data, hobak_data
 
