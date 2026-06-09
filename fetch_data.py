@@ -373,11 +373,6 @@ print(f"API 데이터 수집 시작: {today}")
 all_items = fetch_all_pages(today)
 print(f"감귤/만감류 수집 완료: {len(all_items)}건")
 
-# 디버그: 전체 품목명 목록 출력
-all_item_names = sorted(set(it.get('corp_gds_item_nm','') for it in all_items if it.get('corp_gds_item_nm')))
-all_vrty_names = sorted(set(it.get('corp_gds_vrty_nm','') for it in all_items if it.get('corp_gds_vrty_nm')))
-print(f"전체 품목명({len(all_item_names)}종): {all_item_names}")
-print(f"전체 품종명({len(all_vrty_names)}종) 앞30: {all_vrty_names[:30]}")
 mangam_data, gamgyul_data, hobak_data = filter_items(all_items)
 print(f"만감류: {len(mangam_data)}건 / 감귤: {len(gamgyul_data)}건 / 제주호박: {len(hobak_data)}건")
 
