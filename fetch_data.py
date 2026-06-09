@@ -11,9 +11,10 @@ today = datetime.now(KST).strftime("%Y-%m-%d")
 BASE_URL = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 
 MANGAM_VARIETIES = ["레드향", "천혜향", "한라봉", "카라향"]
-HOBAK_ITEMS = ["미니밤호박", "단호박"]
+HOBAK_ITEMS = ["호박"]  # 품목명
+HOBAK_VARIETIES = ["단호박", "미니밤호박"]  # 품종명
 JEJU_ORIGINS = ["제주"]  # 원산지 필드에 "제주" 포함이면 매칭
-TARGET_LCLSF = ["01","02","03","04","05","06","07","08"]  # 전체 부류 스캔용
+TARGET_LCLSF = ["04", "05"]  # 04=과일류(만감류/감귤), 05=과채류(단호박)
 
 # 누적 데이터 보관 일수
 HISTORY_DAYS = 60
@@ -95,8 +96,8 @@ def filter_items(all_items):
             mangam_data.append(parse_item(item, "만감류", "품종"))
         elif mclsf_cd != "15" and "감귤" in item_nm:
             gamgyul_data.append(parse_item(item, "감귤", "품종"))
-        elif any(h in item_nm for h in HOBAK_ITEMS):
-            hobak_data.append(parse_item(item, "호박", "품목"))  # 제주 필터 제거 - 전국 단호박
+        elif any(h in item_nm for h in HOBAK_ITEMS) and any(v in vrty_nm for v in HOBAK_VARIETIES):
+            hobak_data.append(parse_item(item, "호박", "품종"))
     return mangam_data, gamgyul_data, hobak_data
 
 
