@@ -13,7 +13,7 @@ BASE_URL = "https://apis.data.go.kr/B552845/katRealTime2/trades2"
 MANGAM_VARIETIES = ["레드향", "천혜향", "한라봉", "카라향"]
 HOBAK_ITEMS = ["호박"]  # 품목명
 HOBAK_VARIETIES = ["단호박", "미니밤호박"]  # 품종명
-JEJU_SAN_CD = "14"  # 제주 출하지 코드(san_cd)
+JEJU_ORIGINS = ["제주"]  # 원산지 필드에 "제주" 포함이면 매칭
 TARGET_LCLSF = ["06", "09"]  # 06=과실류(만감류/감귤), 09=과채류(호박)
 
 # 누적 데이터 보관 일수
@@ -96,8 +96,10 @@ def filter_items(all_items):
             mangam_data.append(parse_item(item, "만감류", "품종"))
         elif mclsf_cd != "15" and "감귤" in item_nm:
             gamgyul_data.append(parse_item(item, "감귤", "품종"))
-        elif item.get("gds_lclsf_cd","") == "09" and vrty_nm in HOBAK_VARIETIES and item.get("san_cd","") == JEJU_SAN_CD:
-            hobak_data.append(parse_item(item, "호박", "품종"))
+        elif item.get("gds_lclsf_cd","") == "09" and vrty_nm in HOBAK_VARIETIES:
+            print(f"단호박매칭: vrty={vrty_nm}, plor_nm=[{plor_nm}], san={item.get('san_cd','')}, orgnCd={item.get('orgnCd','')}, plor_cd={item.get('plor_cd','')}")
+            if any(j in plor_nm for j in JEJU_ORIGINS):
+                hobak_data.append(parse_item(item, "호박", "품종"))
     return mangam_data, gamgyul_data, hobak_data
 
 
