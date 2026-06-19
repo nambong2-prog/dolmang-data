@@ -451,6 +451,41 @@ mangam_stats = make_stats(mangam_data, "품종")
 gamgyul_stats = make_stats(gamgyul_data, "품종")
 hobak_stats   = make_stats(hobak_data, "품목")
 
+# ── 호박 원산지 분리: 제주산 / 기타(주요3개 지역+기타) ──
+def jeju_region(origin):
+    """원산지 문자열에서 도 단위 지역명 추출"""
+    o = (origin or "").strip()
+    if "제주" in o:
+        return "제주"
+    # 첫 어절(도/시 단위) 추출
+    first = o.split()[0] if o else "기타"
+    # 특별자치도/특별시/광역시 등 정규화
+    first = first.replace("특별자치도","").replace("특별자치시","").replace("광역시","").replace("특별시","")
+    return first if first else "기타"
+
+hobak_jeju_data = [r for r in hobak_data if "제주" in (r.get("원산지") or "")]
+hobak_etc_data  = [r for r in hobak_data if "제주" not in (r.get("원산지") or "")]
+
+# 기타 지역: 거래량 상위 3개 도 + 나머지 '기타'
+etc_region_qty = {}
+for r in hobak_etc_data:
+    reg = jeju_region(r.get("원산지"))
+    etc_region_qty[reg] = etc_region_qty.get(reg, 0) + r.get("거래량", 0)
+top3_regions = [reg for reg, _ in sorted(etc_region_qty.items(), key=lambda x: -x[1])[:3]]
+
+# 각 record에 표시지역 라벨 부여 (상위3 외에는 '기타')
+for r in hobak_etc_data:
+    reg = jeju_region(r.get("원산지"))
+    r["_표시지역"] = reg if reg in top3_regions else "기타"
+
+hobak_jeju_stats = make_stats(hobak_jeju_data, "품목")
+hobak_etc_stats  = make_stats(hobak_etc_data, "_표시지역")
+
+# hobak_stats에 분리 데이터 추가
+hobak_stats["jeju"] = hobak_jeju_stats
+hobak_stats["etc"]  = hobak_etc_stats
+hobak_stats["etc_regions"] = top3_regions
+
 # ── 가격추이 스냅샷 ──
 mangam_snap = make_trend_snapshot(mangam_data, "품종", today)
 gamgyul_snap = make_trend_snapshot(gamgyul_data, "품종", today)
