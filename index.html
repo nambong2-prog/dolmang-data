@@ -203,7 +203,7 @@
 <div class="max-w-7xl mx-auto px-3 py-4">
 
 <!-- ===== 만감류 ===== -->
-<div id="tab-mangam" class="tab-content active">
+<div id="tab-mangam" class="tab-content">
     <!-- 날짜 선택기 -->
     <div id="mangam-date-header" class="flex items-center gap-2 mb-3 px-1">
         <span class="text-xs font-bold text-gray-500">📅 날짜</span>
@@ -374,7 +374,7 @@
 </div>
 
 <!-- ===== 제주호박 ===== -->
-<div id="tab-hobak" class="tab-content">
+<div id="tab-hobak" class="tab-content active">
     <!-- 날짜 선택기 -->
     <div id="hobak-date-header" class="flex items-center gap-2 mb-3 px-1">
         <span class="text-xs font-bold text-gray-500">📅 날짜</span>
@@ -1498,7 +1498,18 @@ function renderAll(cat, stats){
     if(!stats) return;
     const a = stats.auction || {daily_report:[], market_top6:[], total_history:[]};
     const j = stats.jungga  || {daily_report:[], total_history:[]};
-    renderDaily(cat+'-daily-container', a.daily_report);
+    if(cat==='hobak' && (stats.jeju || stats.etc)){
+      var dc = document.getElementById('hobak-daily-container');
+      if(dc){
+        var regions = (stats.etc_regions||[]).join(', ');
+        dc.innerHTML = '<div style="margin-bottom:8px"><span style="display:inline-block;background:#ff6b35;color:#fff;font-weight:700;padding:4px 12px;border-radius:6px;font-size:13px">🍊 제주산</span></div><div id="hobak-jeju-daily"></div>' +
+          '<div style="margin:18px 0 8px"><span style="display:inline-block;background:#888;color:#fff;font-weight:700;padding:4px 12px;border-radius:6px;font-size:13px">🚚 기타 지역</span>' + (regions?'<span style="color:#888;font-size:12px;margin-left:8px">('+regions+' 외)</span>':'') + '</div><div id="hobak-etc-daily"></div>';
+        renderDaily('hobak-jeju-daily', stats.jeju ? stats.jeju.auction.daily_report : []);
+        renderDaily('hobak-etc-daily',  stats.etc  ? stats.etc.auction.daily_report  : []);
+      }
+    } else {
+      renderDaily(cat+'-daily-container', a.daily_report);
+    }
     renderTop50(cat+'-top50-container', a.daily_report);
     renderMarketTop6(cat+'-market-container', a.market_top6);
     renderJungga(cat+'-jungga-container', j.daily_report, j.total_history);
