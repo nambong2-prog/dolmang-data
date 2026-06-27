@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>돌망돌망 데이터센터</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; }
+        html { -webkit-text-size-adjust: 100%; }
+        body { background: #f0f2f5; overscroll-behavior-y: contain; }
+
+        /* ── 탭 ── */
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
+        .sub-tab-content { display:none; }
+        .sub-tab-content.active { display:block; }
+
+        /* ── 카드 ── */
+        .card { background:white; border-radius:14px; box-shadow:0 1px 6px rgba(0,0,0,0.07); overflow:hidden; }
+
+        /* ── 테이블 ── */
+        .data-table { width:100%; border-collapse:collapse; background:white; font-size:0.78rem; }
+        .data-table th { background:#c2410c; color:white; font-weight:700; padding:10px 10px; text-align:center; position:sticky; top:0; z-index:5; white-space:nowrap; }
+        .data-table th.sortable { cursor:pointer; user-select:none; }
+        .data-table th.sortable:hover { background:#9a3412; }
+        .data-table td { padding:9px 10px; text-align:center; border-bottom:1px solid #f3f4f6; white-space:nowrap; }
+        .data-table tr:active td { background:#fff7ed; }
+        .top50-table th { background:#1d4ed8; }
+        .jungga-table th { background:#6d28d9; }
+
+        /* ── 스크롤 ── */
+        .scroll-x { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .scroll-x::-webkit-scrollbar { height:3px; }
+        .scroll-x::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:2px; }
+
+        /* ── 색상 ── */
+        .badge-jeju { background:#fff7ed; color:#c2410c; font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px; }
+        .num-up { color:#dc2626; font-weight:700; }
+        .num-blue { color:#1d4ed8; font-weight:700; }
+        .num-green { color:#065f46; font-weight:700; }
+        .num-purple { color:#6d28d9; font-weight:700; }
+        .num-gray { color:#6b7280; font-weight:600; }
+        .rank-1 { color:#f59e0b; font-weight:900; }
+        .rank-2 { color:#9ca3af; font-weight:900; }
+        .rank-3 { color:#b45309; font-weight:900; }
+
+        /* ── 서브탭 가로 스크롤 ── */
+        .sub-tab-bar {
+            display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+            padding-bottom:6px; scrollbar-width:none;
+        }
+        .sub-tab-bar::-webkit-scrollbar { display:none; }
+        .sub-btn { flex-shrink:0; padding:8px 14px; border-radius:20px; font-size:12px; font-weight:700; white-space:nowrap; border:none; cursor:pointer; transition:all 0.15s; }
+        .sub-btn:active { transform:scale(0.96); }
+
+        /* ── 필터바 ── */
+        .filter-bar { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; }
+        .filter-bar select, .filter-bar input {
+            border:1px solid #d1d5db; border-radius:8px; padding:6px 8px;
+            font-size:13px; background:white; color:#374151;
+            height:36px; -webkit-appearance:none; appearance:none;
+        }
+        .filter-bar select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; padding-right:24px; }
+        .filter-bar select:focus, .filter-bar input:focus { outline:none; border-color:#f97316; }
+
+        /* ── 차트 ── */
+        .chart-ctrl select {
+            border:1px solid #d1d5db; border-radius:10px; padding:7px 28px 7px 10px;
+            font-size:13px; background:white; color:#374151; cursor:pointer;
+            -webkit-appearance:none; appearance:none;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat:no-repeat; background-position:right 8px center;
+        }
+        .chart-wrap { position:relative; height:240px; }
+        @media(min-width:640px) { .chart-wrap { height:300px; } }
+
+        /* ── 수익계산기 입력 ── */
+        .calc-input { font-size:16px !important; } /* iOS 줌 방지 */
+
+        /* ── 모바일 카드 그리드 ── */
+        @media(max-width:639px) {
+            .mobile-2col { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+            .mobile-stack { flex-direction:column !important; }
+            .mobile-full { width:100% !important; }
+            .hide-mobile { display:none !important; }
+        }
+
+        /* ── 큰 숫자 강조 ── */
+        .stat-val { font-size:1.1rem; font-weight:900; line-height:1.2; }
+        @media(min-width:640px) { .stat-val { font-size:1.25rem; } }
+
+        /* ── 터치 영역 확보 ── */
+        button { min-height:36px; }
+        select, input { min-height:36px; }
+
+        /* ── 안전 영역 (노치) ── */
+        .pb-safe { padding-bottom:env(safe-area-inset-bottom, 0px); }
+
+        /* ── 전체내역 모바일 카드 ── */
+        .total-card-item {
+            padding:12px 14px;
+            border-bottom:1px solid #f3f4f6;
+        }
+        .total-card-item:last-child { border-bottom:none; }
+        .total-card-item:active { background:#fff7ed; }
+
+        /* ── 필터바 모바일 ── */
+        /* ── hide-m: 모바일에서 숨김 ── */
+        @media(max-width:639px){
+            .hide-m { display:none !important; }
+
+            .filter-grid {
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:8px;
+            }
+            .filter-grid select,
+            .filter-grid input { width:100% !important; font-size:14px !important; }
+            .filter-full { grid-column:1/-1; }
+
+            /* 일일리포트 테이블 - 모바일 최적화 */
+            .daily-inner-table { font-size:11px !important; table-layout:fixed; width:100% !important; }
+            .daily-inner-table th,
+            .daily-inner-table td { padding:6px 3px !important; word-break:keep-all; }
+            .daily-inner-table th:nth-child(1),
+            .daily-inner-table td:nth-child(1) { width:18% !important; }  /* 규격 */
+            .daily-inner-table th:nth-child(2),
+            .daily-inner-table td:nth-child(2) { width:26% !important; }  /* 평균가 */
+            .daily-inner-table th:nth-child(3),
+            .daily-inner-table td:nth-child(3) { width:22% !important; }  /* kg단가 */
+            .daily-inner-table th:nth-child(6),
+            .daily-inner-table td:nth-child(6) { width:20% !important; }  /* 거래량 */
+
+            /* 상위50% 테이블 */
+            .top50-table { font-size:11px !important; table-layout:fixed; width:100% !important; }
+            .top50-table th,
+            .top50-table td { padding:6px 3px !important; }
+
+            /* 시장TOP6 - 1열 배치 */
+            .market-top6-grid { grid-template-columns:1fr !important; }
+            .market-top6-table { font-size:11px !important; }
+            .market-top6-table th,
+            .market-top6-table td { padding:5px 4px !important; }
+
+            /* 전체내역 - 카드형 */
+            .total-desktop-table { display:none !important; }
+            .total-mobile-cards { display:block !important; }
+
+            /* 수익예상계산 */
+            .calc-grid { grid-template-columns:1fr !important; }
+
+            /* 시뮬레이션 테이블 - 가로 스크롤 */
+            .sim-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+            .sim-table { font-size:11px !important; min-width:400px; }
+            .sim-table th,
+            .sim-table td { padding:5px 4px !important; white-space:nowrap; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-3 py-2.5 flex justify-between items-center">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-base shadow">🍊</div>
+            <div>
+                <h1 class="text-base font-black text-gray-900 leading-tight">돌망돌망 <span class="text-orange-600">데이터센터</span></h1>
+                <p class="text-xs text-gray-400 hidden sm:block">제주 특산품 도매시장 경매 현황</p>
+            </div>
+        </div>
+        <div class="text-right flex flex-col items-end gap-1">
+            <div class="flex items-center gap-2">
+                <div class="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold border border-green-200">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>실시간
+                </div>
+                <button onclick="manualRefresh()" id="refresh-btn"
+                    title="새로고침"
+                    style="width:32px;height:32px;border-radius:50%;border:1.5px solid #fdba74;background:#fff7ed;
+                           display:flex;align-items:center;justify-content:center;cursor:pointer;
+                           transition:all 0.2s;font-size:16px;"
+                    onmouseover="this.style.background='#fed7aa'"
+                    onmouseout="this.style.background='#fff7ed'">
+                    🔄
+                </button>
+            </div>
+            <p id="update-time" class="text-xs text-gray-400">로딩중...</p>
+        </div>
+    </div>
+    <!-- 메인탭: 가로 스크롤 -->
+    <div class="max-w-7xl mx-auto border-t border-gray-100">
+        <div class="flex overflow-x-auto scrollbar-hide" style="scrollbar-width:none;">
+            <button onclick="changeTab('hobak',this)" class="tab-main-btn flex-1 min-w-[70px] py-3 text-xs font-bold text-orange-600 border-b-2 border-orange-500 whitespace-nowrap">🎃 제주호박</button>
+            <button onclick="changeTab('gamgyul',this)" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍋 감귤</button>
+            <button onclick="changeTab('mangam',this)" class="tab-main-btn active flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍊 만감류</button>
+            <button onclick="changeTab('calc',this)" class="tab-main-btn flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🧮 수익예상계산</button>
+        </div>
+    </div>
+</header>
+
+<div class="max-w-7xl mx-auto px-3 py-4">
+<!-- ===== 엑셀 업로드 ===== -->
+<div id="upload-card" class="card mb-4">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+        <h2 class="font-bold text-gray-800 text-sm">📁 경매 엑셀 업로드 <span class="text-xs text-gray-400 font-normal ml-1">실시간 경매현황 .xls/.xlsx · 여러 개 동시 가능</span></h2>
+        <div class="flex items-center gap-2">
+            <button onclick="clearAllData()" class="text-xs text-red-400 font-bold px-2 py-1 rounded-lg border border-red-200">전체 초기화</button>
+        </div>
+    </div>
+    <div class="p-4">
+        <label id="drop-zone" for="file-input" style="display:block;border:2px dashed #fdba74;border-radius:12px;padding:22px;text-align:center;color:#9ca3af;background:#fffaf5;cursor:pointer;">
+            <div style="font-size:26px">📥</div>
+            <div class="text-sm font-bold text-orange-600 mt-1">엑셀 파일을 끌어다 놓거나 클릭해서 선택</div>
+            <div class="text-xs text-gray-400 mt-1">품목·품종을 자동 인식해 제주호박/감귤/만감류로 분류합니다</div>
+        </label>
+        <input id="file-input" type="file" accept=".xls,.xlsx" multiple style="display:none" onchange="handleFiles(this.files)">
+        <div id="upload-log" class="mt-3 text-xs text-gray-500 space-y-1"></div>
+    </div>
+</div>
+
+
+<!-- ===== 만감류 ===== -->
+<div id="tab-mangam" class="tab-content">
+    <!-- 날짜 선택기 -->
+    <div id="mangam-date-header" class="flex items-center gap-2 mb-3 px-1">
+        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
+        <div id="mangam-date-bar"></div>
+        <span id="mangam-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    </div>
+    <div class="sub-tab-bar mb-3 px-1">
+        <button onclick="changeSubTab('mangam','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
+        <button onclick="changeSubTab('mangam','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
+        <button onclick="changeSubTab('mangam','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
+        <button onclick="changeSubTab('mangam','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
+        <button onclick="changeSubTab('mangam','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
+        <button onclick="changeSubTab('mangam','total',this)" class="sub-btn bg-gray-100 text-gray-600">📋 전체내역</button>
+    </div>
+
+    <div id="mangam-daily" class="sub-tab-content active">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                <h2 class="font-bold text-gray-800 text-sm">📊 만감류 일일 리포트 <span class="text-xs text-gray-400 font-normal ml-1">경매만 · 품종별 카드</span></h2>
+            </div>
+            <div id="mangam-daily-container"></div>
+        </div>
+    </div>
+    <div id="mangam-top50" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">⭐ 상위 50% 분석 <span class="text-xs text-gray-400 font-normal ml-1">경락가 기준 상위50% · 경매만 · 품종별 카드</span></h2></div>
+        <div id="mangam-top50-container"></div></div>
+    </div>
+    <div id="mangam-market" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">🏪 규격별 시장 TOP6 <span class="text-xs text-gray-400 font-normal ml-1">품종별 묶음</span></h2></div>
+        <div id="mangam-market-container" class="p-3 space-y-5"></div></div>
+    </div>
+    <div id="mangam-trend" class="sub-tab-content">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">📈 가격추이 <span class="text-xs text-gray-400 font-normal ml-1">누적 데이터 기반 · 경매 평균가</span></h2></div>
+            <div class="p-4">
+                <div class="chart-ctrl flex flex-wrap gap-3 mb-4 items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-500">품종</span>
+                        <select id="mangam-trend-variety" onchange="drawTrend('mangam')"></select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-500">규격</span>
+                        <select id="mangam-trend-spec" onchange="drawTrend('mangam')"></select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-gray-500">기간</span>
+                        <select id="mangam-trend-days" onchange="drawTrend('mangam')">
+                            <option value="7">7일</option>
+                            <option value="14">14일</option>
+                            <option value="30" selected>30일</option>
+                            <option value="60">60일</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-wrap"><canvas id="mangam-trend-chart"></canvas></div>
+                <div id="mangam-trend-summary" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+            </div>
+        </div>
+        <!-- 품종별 전체 추이 미니 차트 -->
+        <div class="card mt-3">
+            <div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">📊 품종별 전체 거래량 추이</h2></div>
+            <div class="p-4 chart-wrap"><canvas id="mangam-vol-chart"></canvas></div>
+        </div>
+    </div>
+    <div id="mangam-jungga" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-purple-100 bg-purple-50"><h2 class="font-bold text-purple-800 text-sm">📋 정가수의 거래 내역 <span class="text-xs text-purple-400 font-normal ml-1">품목 › 도매시장 › 규격별 + 하단 평균가</span></h2></div>
+        <div id="mangam-jungga-container"></div></div>
+    </div>
+    <div id="mangam-total" class="sub-tab-content">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="font-bold text-gray-800 text-sm">📋 경매 전체 거래내역</h2>
+                <div class="flex items-center gap-2">
+                    <span id="mangam-filter-count" class="text-xs text-gray-400 font-bold"></span>
+                    <button onclick="resetFilter('mangam')" class="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg border border-gray-200 whitespace-nowrap">정렬초기화</button>
+                </div>
+            </div>
+            <div class="filter-bar mx-3 mt-3 mb-2">
+                <div class="filter-grid">
+                    <select id="mangam-filter-variety" onchange="applyFilter('mangam')" class="w-full"><option value="">품종 전체</option></select>
+                    <select id="mangam-filter-spec" onchange="applyFilter('mangam')" class="w-full"><option value="">규격 전체</option></select>
+                    <select id="mangam-filter-market" onchange="applyFilter('mangam')" class="w-full filter-full"><option value="">시장 전체</option></select>
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <input id="mangam-filter-text" type="text" placeholder="🔍 품종·시장·경락가 검색..." oninput="applyFilter('mangam')" class="flex-1" style="width:auto">
+                    <button onclick="resetFilter('mangam')" class="text-xs text-orange-500 font-bold px-3 py-1 rounded-lg border border-orange-200 bg-orange-50 whitespace-nowrap">초기화</button>
+                </div>
+            </div>
+            <div id="mangam-total-container" class="max-h-[70vh] overflow-y-auto"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 감귤 ===== -->
+<div id="tab-gamgyul" class="tab-content">
+    <!-- 날짜 선택기 -->
+    <div id="gamgyul-date-header" class="flex items-center gap-2 mb-3 px-1">
+        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
+        <div id="gamgyul-date-bar"></div>
+        <span id="gamgyul-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    </div>
+    <div class="sub-tab-bar mb-3 px-1">
+        <button onclick="changeSubTab('gamgyul','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
+        <button onclick="changeSubTab('gamgyul','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
+        <button onclick="changeSubTab('gamgyul','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
+        <button onclick="changeSubTab('gamgyul','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
+        <button onclick="changeSubTab('gamgyul','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
+        <button onclick="changeSubTab('gamgyul','total',this)" class="sub-btn bg-gray-100 text-gray-600">📋 전체내역</button>
+    </div>
+    <div id="gamgyul-daily" class="sub-tab-content active">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                <h2 class="font-bold text-gray-800 text-sm">📊 감귤 일일 리포트 <span class="text-xs text-gray-400 font-normal ml-1">경매만 · 품종별 카드</span></h2>
+            </div>
+            <div id="gamgyul-daily-container"></div>
+        </div>
+    </div>
+    <div id="gamgyul-top50" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">⭐ 상위 50% 분석</h2></div>
+        <div id="gamgyul-top50-container"></div></div>
+    </div>
+    <div id="gamgyul-market" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">🏪 규격별 시장 TOP6</h2></div>
+        <div id="gamgyul-market-container" class="p-3 space-y-5"></div></div>
+    </div>
+    <div id="gamgyul-trend" class="sub-tab-content">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">📈 가격추이</h2></div>
+            <div class="p-4">
+                <div class="chart-ctrl flex flex-wrap gap-3 mb-4 items-center">
+                    <div class="flex items-center gap-2"><span class="text-xs font-bold text-gray-500">품종</span><select id="gamgyul-trend-variety" onchange="drawTrend('gamgyul')"></select></div>
+                    <div class="flex items-center gap-2"><span class="text-xs font-bold text-gray-500">규격</span><select id="gamgyul-trend-spec" onchange="drawTrend('gamgyul')"></select></div>
+                    <div class="flex items-center gap-2"><span class="text-xs font-bold text-gray-500">기간</span><select id="gamgyul-trend-days" onchange="drawTrend('gamgyul')"><option value="7">7일</option><option value="14">14일</option><option value="30" selected>30일</option><option value="60">60일</option></select></div>
+                </div>
+                <div class="chart-wrap"><canvas id="gamgyul-trend-chart"></canvas></div>
+                <div id="gamgyul-trend-summary" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+            </div>
+        </div>
+        <div class="card mt-3"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">📊 품종별 전체 거래량 추이</h2></div><div class="p-4 chart-wrap"><canvas id="gamgyul-vol-chart"></canvas></div></div>
+    </div>
+    <div id="gamgyul-jungga" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-purple-100 bg-purple-50"><h2 class="font-bold text-purple-800 text-sm">📋 정가수의 거래 내역</h2></div>
+        <div id="gamgyul-jungga-container"></div></div>
+    </div>
+    <div id="gamgyul-total" class="sub-tab-content">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="font-bold text-gray-800 text-sm">📋 경매 전체 거래내역</h2>
+                <div class="flex items-center gap-2">
+                    <span id="gamgyul-filter-count" class="text-xs text-gray-400 font-bold"></span>
+                    <button onclick="resetFilter('gamgyul')" class="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg border border-gray-200 whitespace-nowrap">정렬초기화</button>
+                </div>
+            </div>
+            <div class="filter-bar mx-3 mt-3 mb-2">
+                <div class="filter-grid">
+                    <select id="gamgyul-filter-variety" onchange="applyFilter('gamgyul')" class="w-full"><option value="">품종 전체</option></select>
+                    <select id="gamgyul-filter-spec" onchange="applyFilter('gamgyul')" class="w-full"><option value="">규격 전체</option></select>
+                    <select id="gamgyul-filter-market" onchange="applyFilter('gamgyul')" class="w-full filter-full"><option value="">시장 전체</option></select>
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <input id="gamgyul-filter-text" type="text" placeholder="🔍 품종·시장·경락가 검색..." oninput="applyFilter('gamgyul')" class="flex-1" style="width:auto">
+                    <button onclick="resetFilter('gamgyul')" class="text-xs text-orange-500 font-bold px-3 py-1 rounded-lg border border-orange-200 bg-orange-50 whitespace-nowrap">초기화</button>
+                </div>
+            </div>
+            <div id="gamgyul-total-container" class="max-h-[70vh] overflow-y-auto"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 제주호박 ===== -->
+<div id="tab-hobak" class="tab-content active">
+    <!-- 날짜 선택기 -->
+    <div id="hobak-date-header" class="flex items-center gap-2 mb-3 px-1">
+        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
+        <div id="hobak-date-bar"></div>
+        <span id="hobak-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    </div>
+    <div class="sub-tab-bar mb-3 px-1">
+        <button onclick="changeSubTab('hobak','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
+        <button onclick="changeSubTab('hobak','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
+        <button onclick="changeSubTab('hobak','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
+        <button onclick="changeSubTab('hobak','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
+        <button onclick="changeSubTab('hobak','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
+        <button onclick="changeSubTab('hobak','total',this)" class="sub-btn bg-gray-100 text-gray-600">📋 전체내역</button>
+    </div>
+    <div id="hobak-daily" class="sub-tab-content active">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+                <h2 class="font-bold text-gray-800 text-sm">📊 제주호박 일일 리포트 <span class="text-xs text-orange-500 font-normal">원산지 제주만 · 품종별 카드</span></h2>
+            </div>
+            <div id="hobak-daily-container"></div>
+        </div>
+    </div>
+    <div id="hobak-top50" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">⭐ 상위 50% 분석</h2></div>
+        <div id="hobak-top50-container"></div></div>
+    </div>
+    <div id="hobak-market" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">🏪 규격별 시장 TOP6</h2></div>
+        <div id="hobak-market-container" class="p-3 space-y-5"></div></div>
+    </div>
+    <div id="hobak-trend" class="sub-tab-content">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">📈 가격추이</h2></div>
+            <div class="p-4">
+                <div class="chart-ctrl flex flex-wrap gap-3 mb-4 items-center">
+                    <div class="flex items-center gap-2"><span class="text-xs font-bold text-gray-500">품목</span><select id="hobak-trend-variety" onchange="drawTrend('hobak')"></select></div>
+                    <div class="flex items-center gap-2"><span class="text-xs font-bold text-gray-500">규격</span><select id="hobak-trend-spec" onchange="drawTrend('hobak')"></select></div>
+                    <div class="flex items-center gap-2"><span class="text-xs font-bold text-gray-500">기간</span><select id="hobak-trend-days" onchange="drawTrend('hobak')"><option value="7">7일</option><option value="14">14일</option><option value="30" selected>30일</option><option value="60">60일</option></select></div>
+                </div>
+                <div class="chart-wrap"><canvas id="hobak-trend-chart"></canvas></div>
+                <div id="hobak-trend-summary" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+            </div>
+        </div>
+        <div class="card mt-3"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">📊 품목별 전체 거래량 추이</h2></div><div class="p-4 chart-wrap"><canvas id="hobak-vol-chart"></canvas></div></div>
+    </div>
+    <div id="hobak-jungga" class="sub-tab-content">
+        <div class="card"><div class="px-4 py-3 border-b border-purple-100 bg-purple-50"><h2 class="font-bold text-purple-800 text-sm">📋 정가수의 거래 내역</h2></div>
+        <div id="hobak-jungga-container"></div></div>
+    </div>
+    <div id="hobak-total" class="sub-tab-content">
+        <div class="card">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="font-bold text-gray-800 text-sm">📋 경매 전체 거래내역</h2>
+                <div class="flex items-center gap-2">
+                    <span id="hobak-filter-count" class="text-xs text-gray-400 font-bold"></span>
+                    <button onclick="resetFilter('hobak')" class="text-xs text-gray-400 font-bold px-2 py-1 rounded-lg border border-gray-200 whitespace-nowrap">정렬초기화</button>
+                </div>
+            </div>
+            <div class="filter-bar mx-3 mt-3 mb-2">
+                <div class="filter-grid">
+                    <select id="hobak-filter-variety" onchange="applyFilter('hobak')" class="w-full"><option value="">품목 전체</option></select>
+                    <select id="hobak-filter-spec" onchange="applyFilter('hobak')" class="w-full"><option value="">규격 전체</option></select>
+                    <select id="hobak-filter-market" onchange="applyFilter('hobak')" class="w-full filter-full"><option value="">시장 전체</option></select>
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <input id="hobak-filter-text" type="text" placeholder="🔍 품종·시장·경락가 검색..." oninput="applyFilter('hobak')" class="flex-1" style="width:auto">
+                    <button onclick="resetFilter('hobak')" class="text-xs text-orange-500 font-bold px-3 py-1 rounded-lg border border-orange-200 bg-orange-50 whitespace-nowrap">초기화</button>
+                </div>
+            </div>
+            <div id="hobak-total-container" class="max-h-[70vh] overflow-y-auto"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 수익 계산기 ===== -->
+<div id="tab-calc" class="tab-content">
+
+    <!-- 상단 안내 배너 -->
+    <div class="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+        <span class="text-2xl">🧮</span>
+        <div>
+            <p class="font-black text-orange-700 text-sm">공판 수익예상계산기</p>
+            <p id="calc-banner-desc" class="text-xs text-orange-400">선과장 작업 기준 · 도매시장 출하</p>
+        </div>
+    </div>
+
+    <div class="calc-grid grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+
+        <!-- 왼쪽: 입력 패널 -->
+        <div class="space-y-4">
+
+            <!-- 기본 정보 입력 -->
+            <div class="card">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <span class="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-black">1</span>
+                    <h2 class="font-bold text-gray-800 text-sm">기본 정보</h2>
+                </div>
+                <div class="p-4 space-y-4">
+
+                    <!-- 작업방식 선택 -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5">작업방식</label>
+                        <div class="flex gap-2">
+                            <button id="wtype-sungwa" onclick="setWorkType('선과장')"
+                                class="flex-1 py-2 px-3 rounded-lg border-2 border-orange-400 bg-orange-50 text-orange-700 text-xs font-black transition-all">
+                                🏭 선과장 작업
+                            </button>
+                            <button id="wtype-direct" onclick="setWorkType('직접')"
+                                class="flex-1 py-2 px-3 rounded-lg border-2 border-gray-200 bg-white text-gray-400 text-xs font-bold transition-all">
+                                🙋 직접 작업
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1.5">품종</label>
+                            <select id="c-variety" onchange="updateSpecOptions()" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                                <option value="천혜향">천혜향</option>
+                                <option value="한라봉">한라봉</option>
+                                <option value="레드향">레드향</option>
+                                <option value="카라향">카라향</option>
+                                <option value="감귤">감귤</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1.5">규격</label>
+                            <select id="c-spec" onchange="updateSpecOptions(this.value)" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                                <option value="9kg">9kg</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1.5">매입 kg원가 <span class="text-orange-400">(원/kg)</span></label>
+                            <input id="c-buyprice" type="number" placeholder="예: 2500" oninput="calcProfit()"
+                                class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                            <p id="c-buyprice-box" class="text-xs text-blue-500 font-bold mt-1 min-h-[16px]"></p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1.5">출하 수량 <span class="text-orange-400">(박스)</span></label>
+                            <input id="c-qty" type="number" placeholder="예: 100" oninput="calcProfit()"
+                                class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5">예상 경락가 <span class="text-orange-400">(원/박스)</span>
+                            <span id="c-today-hint" class="ml-2 text-blue-400 font-normal cursor-pointer hover:underline" onclick="fillTodayPrice()"></span>
+                        </label>
+                        <input id="c-sellprice" type="number" placeholder="예: 38000" oninput="calcProfit()"
+                            class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 수수료 구조 (수정 가능) -->
+            <div class="card">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-black">2</span>
+                        <h2 class="font-bold text-gray-800 text-sm">공제 항목 <span class="text-xs text-gray-400 font-normal">(수정 가능)</span></h2>
+                    </div>
+                    <button onclick="resetFees()" class="text-xs text-orange-400 hover:text-orange-600 font-bold border border-orange-200 px-2 py-1 rounded-lg">기본값 복원</button>
+                </div>
+                <div class="p-4 space-y-2.5">
+                    <!-- 경매수수료 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 w-28 shrink-0">경매수수료</span>
+                        <input id="f-commission" type="number" step="0.1" value="6" oninput="calcProfit()"
+                            class="calc-input w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
+                        <span class="text-xs text-gray-400">%</span>
+                        <span id="f-commission-val" class="ml-auto text-xs font-bold text-gray-600"></span>
+                    </div>
+                    <!-- 운송비 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 w-28 shrink-0">운송비</span>
+                        <input id="f-transport" type="number" value="1800" oninput="calcProfit()"
+                            class="calc-input w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
+                        <span class="text-xs text-gray-400">원/박스</span>
+                        <span id="f-transport-val" class="ml-auto text-xs font-bold text-gray-600"></span>
+                    </div>
+                    <!-- 하역비 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 w-28 shrink-0">하역비</span>
+                        <input id="f-unload" type="number" value="240" oninput="calcProfit()"
+                            class="calc-input w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
+                        <span class="text-xs text-gray-400">원/박스</span>
+                        <span id="f-unload-val" class="ml-auto text-xs font-bold text-gray-600"></span>
+                    </div>
+                    <!-- 선별포장비 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 w-28 shrink-0">선별포장비</span>
+                        <input id="f-sorting" type="number" value="2500" oninput="calcProfit()"
+                            class="calc-input w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
+                        <span class="text-xs text-gray-400">원/박스</span>
+                        <span id="f-sorting-val" class="ml-auto text-xs font-bold text-gray-600"></span>
+                    </div>
+                    <!-- 포장재비용 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 w-28 shrink-0">포장재비용</span>
+                        <input id="f-packing" type="number" value="1550" oninput="calcProfit()"
+                            class="calc-input w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
+                        <span class="text-xs text-gray-400">원/박스</span>
+                        <span id="f-packing-val" class="ml-auto text-xs font-bold text-gray-600"></span>
+                    </div>
+                    <!-- 기타 (구 자조금) -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 w-28 shrink-0">기타</span>
+                        <input id="f-fund" type="number" value="96" oninput="calcProfit()"
+                            class="calc-input w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-400">
+                        <span class="text-xs text-gray-400">원/박스</span>
+                        <span id="f-fund-val" class="ml-auto text-xs font-bold text-gray-600"></span>
+                    </div>
+                    <!-- 출하처기타(감협수수료) - 선과장 작업시에만 표시 -->
+                    <div id="f-etc-row" class="flex items-center gap-2 border-t border-dashed border-gray-200 pt-2.5">
+                        <span class="text-xs text-gray-500 w-28 shrink-0">출하처기타 <span class="text-orange-400 text-xs">(감협 2%)</span></span>
+                        <span class="text-xs text-gray-400 italic">경락가 × 2%</span>
+                        <span id="f-etc-val" class="ml-auto text-xs font-bold text-orange-500"></span>
+                    </div>
+                    <!-- 총 공제 합계 -->
+                    <div class="flex items-center bg-gray-50 rounded-lg px-3 py-2 mt-1">
+                        <span class="text-xs font-bold text-gray-600 w-28 shrink-0">박스당 총 공제</span>
+                        <span id="f-total-deduct" class="ml-auto text-sm font-black text-red-500"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 결과 패널 -->
+        <div class="space-y-4">
+
+            <!-- 손익분기점 -->
+            <div class="card border-2 border-orange-200">
+                <div class="px-4 py-3 border-b border-orange-100 bg-orange-50">
+                    <h2 class="font-bold text-orange-700 text-sm">📍 손익분기점 경락가</h2>
+                </div>
+                <div class="p-5 text-center">
+                    <p class="text-xs text-gray-400 mb-1">이 가격 이상이어야 손익분기</p>
+                    <p id="r-breakeven" class="text-4xl font-black text-orange-600">—</p>
+                    <p class="text-xs text-gray-400 mt-1">원/박스</p>
+                    <p id="r-breakeven-kg" class="text-sm font-bold text-orange-400 mt-1"></p>
+                </div>
+            </div>
+
+            <!-- 박스당 수익 요약 -->
+            <div class="card">
+                <div class="px-4 py-3 border-b border-gray-100">
+                    <h2 class="font-bold text-gray-800 text-sm">📦 박스당 수익 분석</h2>
+                </div>
+                <div class="p-4 space-y-2.5">
+                    <div class="flex justify-between items-center py-1.5 border-b border-dashed border-gray-100">
+                        <span class="text-xs text-gray-500">예상 경락가</span>
+                        <span class="text-right">
+                            <span id="r-sellprice" class="text-sm font-bold text-gray-700">—</span>
+                            <span id="r-sellprice-kg" class="block text-xs text-purple-500 font-bold"></span>
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center py-1.5 border-b border-dashed border-gray-100">
+                        <span class="text-xs text-gray-500">총 공제액</span>
+                        <span id="r-deduct" class="text-sm font-bold text-red-400">—</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1.5 border-b border-dashed border-gray-100">
+                        <span class="text-xs text-gray-500">실수취액 (경락가-공제)</span>
+                        <span id="r-net" class="text-sm font-bold text-blue-600">—</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1.5 border-b border-dashed border-gray-100">
+                        <span class="text-xs text-gray-500">매입가 (kg원가 × 규격무게)</span>
+                        <span id="r-buyprice" class="text-sm font-bold text-gray-700">—</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 bg-gray-50 rounded-lg px-3 mt-1">
+                        <span class="text-xs font-black text-gray-700">박스당 순이익</span>
+                        <span id="r-profit-per" class="text-base font-black">—</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1.5 px-1">
+                        <span class="text-xs text-gray-500">수익률 (순이익/매입가)</span>
+                        <span id="r-margin" class="text-sm font-bold">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 전체 수익 요약 -->
+            <div class="card">
+                <div class="px-4 py-3 border-b border-gray-100">
+                    <h2 class="font-bold text-gray-800 text-sm">💰 전체 수익 요약</h2>
+                </div>
+                <div class="p-4 grid grid-cols-2 gap-3">
+                    <div class="bg-gray-50 rounded-xl p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">총 매입원가</p>
+                        <p id="r-total-cost" class="text-base font-black text-gray-700">—</p>
+                    </div>
+                    <div class="bg-blue-50 rounded-xl p-3 text-center">
+                        <p class="text-xs text-blue-400 mb-1">총 실수취액</p>
+                        <p id="r-total-net" class="text-base font-black text-blue-600">—</p>
+                    </div>
+                    <div class="bg-red-50 rounded-xl p-3 text-center">
+                        <p class="text-xs text-red-400 mb-1">총 공제합계</p>
+                        <p id="r-total-deduct" class="text-base font-black text-red-500">—</p>
+                    </div>
+                    <div id="r-total-profit-card" class="rounded-xl p-3 text-center bg-green-50">
+                        <p class="text-xs mb-1 text-green-600">총 순이익</p>
+                        <p id="r-total-profit" class="text-base font-black text-green-600">—</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 경락가별 시뮬레이션 -->
+            <div class="card">
+                <div class="px-4 py-3 border-b border-gray-100">
+                    <h2 class="font-bold text-gray-800 text-sm">📊 경락가별 수익 시뮬레이션</h2>
+                </div>
+                <div class="sim-scroll scroll-x">
+                    <table class="data-table sim-table">
+                        <thead><tr>
+                            <th>경락가</th>
+                            <th>공제액</th>
+                            <th>실수취액</th>
+                            <th>박스당 순이익</th>
+                            <th class="hide-m">수익률</th>
+                            <th id="sim-qty-header">전체순이익</th>
+                        </tr></thead>
+                        <tbody id="sim-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+</div><!-- /max-w -->
+
+<script>
+function updateTodayHint(){
+    const variety = document.getElementById('c-variety').value;
+    const hint    = document.getElementById('c-today-hint');
+    if(todayPrices[variety]){
+        const specKg = parseKg(document.getElementById('c-spec').value || '9kg');
+        const kgUnit = specKg > 0 ? Math.round(todayPrices[variety] / specKg) : 0;
+        hint.textContent = `📌 오늘 ${variety} 평균 ${fmt(todayPrices[variety])}원 (${kgUnit}원/kg) → 클릭입력`;
+    } else {
+        hint.textContent = '';
+    }
+}
+document.getElementById('c-variety').addEventListener('change', updateTodayHint);
+function changeTab(name,btn){
+    document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    document.querySelectorAll('.tab-main-btn').forEach(b=>{b.classList.remove('text-orange-600','border-orange-500');b.classList.add('text-gray-400','border-transparent');});
+    btn.classList.remove('text-gray-400','border-transparent'); btn.classList.add('text-orange-600','border-orange-500');
+}
+function changeSubTab(cat,name,btn){
+    document.querySelectorAll('#tab-'+cat+' .sub-tab-content').forEach(e=>e.classList.remove('active'));
+    document.getElementById(cat+'-'+name).classList.add('active');
+    document.querySelectorAll('#tab-'+cat+' .sub-btn').forEach(b=>{
+        b.classList.remove('bg-orange-500','text-white');
+        if(b.classList.contains('purple-btn')) { b.classList.remove('bg-orange-500','text-white'); b.classList.add('bg-purple-50','text-purple-700'); }
+        else if(b.style.cssText.includes('blue')||b.classList.contains('bg-blue-50')) { b.classList.add('bg-blue-50','text-blue-700'); }
+        else { b.classList.add('bg-gray-100','text-gray-600'); }
+    });
+    btn.classList.remove('bg-gray-100','text-gray-600','bg-purple-50','text-purple-700','bg-blue-50','text-blue-700');
+    btn.classList.add('bg-orange-500','text-white');
+    if(name==='trend') drawTrend(cat);
+    // 버튼 보이도록 스크롤
+    btn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+}
+
+// ── 유틸 ─────────────────────────────────────────────────────
+const fmt  = n => Number(n).toLocaleString();
+const fmtT = n => { if(!n) return '-'; return n>=1000 ? (n/1000).toFixed(1)+'t' : n+'kg'; };
+const jeju = s => s&&s.includes('제주')?`<span class="badge-jeju">제주</span>`:(s||'');
+
+function parseKg(spec){
+    if(!spec) return 9999;
+    const m=(spec+'').match(/[\d.]+/);
+    return m?parseFloat(m[0]):9999;
+}
+function groupAndSort(data){
+    const g={};
+    data.forEach(r=>{const v=r.품종||r.품목||'';if(!g[v])g[v]=[];g[v].push(r);});
+    Object.keys(g).forEach(v=>g[v].sort((a,b)=>parseKg(a.규격)-parseKg(b.규격)));
+    return g;
+}
+
+// ── 일일리포트 ────────────────────────────────────────────────
+function renderDaily(containerId, data, dateLabel){
+    const el=document.getElementById(containerId);
+    if(!data||!data.length){el.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">데이터 없음</p>';return;}
+
+    // 과거 날짜 배너
+    const dateBanner = dateLabel
+        ? `<div class="mx-3 mt-3 px-3 py-2 bg-blue-50 rounded-lg text-xs text-blue-600 font-bold flex items-center gap-1.5">
+            📅 ${dateLabel} 데이터
+            <span class="font-normal text-blue-400 ml-1">· 가격추이에서 더 자세한 트렌드를 확인하세요</span>
+           </div>`
+        : '';
+
+    const groups=groupAndSort(data);
+    const varietyTotals={};
+    data.forEach(r=>{
+        const v=r.품종||r.품목||'';
+        if(!varietyTotals[v]) varietyTotals[v]={qty:0,wt:0};
+        varietyTotals[v].qty += r.총거래량||0;
+        varietyTotals[v].wt  += r.총중량||0;
+    });
+    let html= dateBanner + '<div class="p-3 space-y-4">';
+    Object.keys(groups).forEach(v=>{
+        const tot=varietyTotals[v]||{qty:0,wt:0};
+        html+=`<div class="border border-orange-100 rounded-xl overflow-hidden shadow-sm">
+            <div class="bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-2.5 flex items-center justify-between border-b border-orange-100">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-orange-400 rounded-full"></span>
+                    <span class="font-black text-orange-700 text-sm">${v}</span>
+                </div>
+                <div class="flex gap-3 text-xs text-orange-500 font-bold">
+                    <span>📦 ${fmt(Math.round(tot.qty))}박스</span>
+                    <span>⚖️ ${fmtT(Math.round(tot.wt))}</span>
+                </div>
+            </div>
+            <table class="w-full text-xs daily-inner-table">
+                <thead><tr class="bg-orange-600 text-white">
+                    <th class="py-2 px-2 text-left">규격</th>
+                    <th class="py-2 px-2">평균가</th>
+                    <th class="py-2 px-2">kg단가</th>
+                    <th class="py-2 px-2 hide-m">최고가</th>
+                    <th class="py-2 px-2 hide-m">최저가</th>
+                    <th class="py-2 px-2">거래량</th>
+                    <th class="py-2 px-2 hide-m">총중량</th>
+                </tr></thead>
+                <tbody>`;
+        groups[v].forEach(r=>{
+            const kgUnit = parseKg(r.규격);
+            const kgPrice = kgUnit>0 && r.평균가 ? Math.round(r.평균가/kgUnit) : 0;
+            html+=`<tr class="border-b border-orange-50 hover:bg-orange-50">
+                <td class="py-2 px-2 font-bold text-gray-700">${r.규격}</td>
+                <td class="py-2 px-2 text-center font-black text-red-500">${fmt(r.평균가)}원</td>
+                <td class="py-2 px-2 text-center text-orange-500 font-bold">${kgPrice>0?fmt(kgPrice)+'원':'—'}</td>
+                <td class="py-2 px-2 text-center text-red-400 hide-m">${fmt(r.최고가)}원</td>
+                <td class="py-2 px-2 text-center text-gray-400 hide-m">${fmt(r.최저가)}원</td>
+                <td class="py-2 px-2 text-center text-blue-600 font-bold">${fmt(r.총거래량)}박스</td>
+                <td class="py-2 px-2 text-center text-gray-500 hide-m">${fmtT(r.총중량)}</td>
+            </tr>`;
+        });
+        html+=`</tbody></table></div>`;
+    });
+    html+='</div>';
+    el.innerHTML=html;
+}
+
+// ── 상위50% ───────────────────────────────────────────────────
+function renderTop50(containerId,data){
+    const el=document.getElementById(containerId);
+    if(!data||!data.length){el.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">데이터 없음</p>';return;}
+    const groups=groupAndSort(data);
+    let html='<div class="p-3 space-y-4">';
+    Object.keys(groups).forEach(v=>{
+        html+=`<div class="border border-blue-100 rounded-xl overflow-hidden shadow-sm">
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2.5 flex items-center gap-2 border-b border-blue-100">
+                <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                <span class="font-black text-blue-700 text-sm">${v}</span>
+                <span class="text-xs text-blue-400 font-normal ml-1">경매 상위 50% 분석</span>
+            </div>
+            <table class="w-full text-xs daily-inner-table">
+                <thead><tr class="bg-blue-700 text-white">
+                    <th class="py-2 px-3 text-left">규격</th>
+                    <th class="py-2 px-3">상위50% 평균가</th>
+                    <th class="py-2 px-3">상위50% kg단가</th>
+                    <th class="py-2 px-3 hide-m">상위50% 거래량</th>
+                    <th class="py-2 px-3 hide-m">전체 평균가</th>
+                    <th class="py-2 px-3">전체 거래량</th>
+                    <th class="py-2 px-3 hide-m">총 중량</th>
+                </tr></thead>
+                <tbody>`;
+        groups[v].forEach(r=>{
+            const diff = r.상위50평균가 - r.평균가;
+            const kgUnit = parseKg(r.규격);
+            const top50kg = (kgUnit > 0 && r.상위50평균가) ? Math.round(r.상위50평균가 / kgUnit) : 0;
+            html+=`<tr class="border-b border-blue-50 hover:bg-blue-50">
+                <td class="py-2.5 px-3 font-bold text-gray-700">${r.규격}</td>
+                <td class="py-2.5 px-3 text-center">
+                    <span class="font-black text-green-600">${fmt(r.상위50평균가)}원</span>
+                    <span class="ml-1 text-xs ${diff>=0?'text-green-400':'text-red-400'} hide-m">
+                        (${diff>=0?'+':''}${fmt(diff)})
+                    </span>
+                </td>
+                <td class="py-2.5 px-3 text-center">
+                    <span class="font-black text-purple-600">${top50kg ? fmt(top50kg)+'원' : '-'}</span>
+                    <span class="text-gray-400 text-xs"> /kg</span>
+                </td>
+                <td class="py-2.5 px-3 text-center text-blue-600 font-bold hide-m">${fmt(r.상위50거래량)}박스</td>
+                <td class="py-2.5 px-3 text-center text-gray-400 hide-m">${fmt(r.평균가)}원</td>
+                <td class="py-2.5 px-3 text-center text-gray-400">${fmt(r.총거래량)}박스</td>
+                <td class="py-2.5 px-3 text-center text-gray-500 hide-m">${fmtT(r.총중량)}</td>
+            </tr>`;
+        });
+        html+=`</tbody></table></div>`;
+    });
+    html+='</div>';
+    el.innerHTML=html;
+}
+
+// ── 시장 TOP6 ─────────────────────────────────────────────────
+function renderMarketTop6(containerId,marketData){
+    const el=document.getElementById(containerId);
+    if(!marketData||!marketData.length){el.innerHTML='<p class="text-gray-300 text-sm p-4 text-center">데이터 없음</p>';return;}
+    const groups={};
+    marketData.forEach(item=>{const v=item.품종||item.품목||'';if(!groups[v])groups[v]=[];groups[v].push(item);});
+    Object.keys(groups).forEach(v=>groups[v].sort((a,b)=>parseKg(a.규격)-parseKg(b.규격)));
+    let html='<div class="p-3 space-y-6">';
+    Object.keys(groups).forEach(variety=>{
+        html+=`<div class="border border-emerald-100 rounded-xl overflow-hidden shadow-sm">
+            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2.5 flex items-center gap-2 border-b border-emerald-100">
+                <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                <span class="font-black text-emerald-700 text-sm">${variety}</span>
+                <span class="text-xs text-emerald-400 font-normal ml-1">규격별 시장 TOP6 · 상위50% 평균가 기준</span>
+            </div>
+            <div class="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 market-top6-grid">`;
+        groups[variety].forEach(item=>{
+            const uid = containerId+'_'+variety+'_'+item.규격;
+            html+=`<div class="border border-emerald-100 rounded-lg overflow-hidden">
+                <div class="bg-emerald-100 px-3 py-1.5 flex items-center justify-between">
+                    <span class="font-bold text-emerald-800 text-xs">${item.규격}</span>
+                    <span class="text-emerald-500 text-xs">${item.시장목록.length}개 시장</span>
+                </div>
+                <table class="w-full text-xs"><thead><tr class="bg-emerald-700 text-white">
+                    <th class="py-1.5 px-2 w-7">순위</th>
+                    <th class="text-left px-2">시장명</th>
+                    <th class="px-2">상위50%평균</th>
+                    <th class="px-2">kg단가</th>
+                    <th class="px-2 hide-m">전체평균</th>
+                    <th class="px-2">거래량</th>
+                </tr></thead><tbody>
+                ${item.시장목록.map((m,i)=>{
+                    const rowId=uid+'_'+i;
+                    const corps=(m.법인목록||[]);
+                    const kgUnit=parseKg(item.규격);
+                    const mKg=(kgUnit>0&&m.상위50평균가)?Math.round(m.상위50평균가/kgUnit):0;
+                    const corpsHtml=corps.length?`<tr id="corp_${rowId}" style="display:none">
+                        <td colspan="6" class="p-0">
+                            <table class="w-full text-xs bg-emerald-50">
+                                <thead><tr class="bg-emerald-200 text-emerald-800">
+                                    <th class="py-1 px-3 text-left">법인 <span class="font-normal text-emerald-500">(상위3)</span></th>
+                                    <th class="py-1 px-2">상위50%평균</th>
+                                    <th class="py-1 px-2">kg단가</th>
+                                    <th class="py-1 px-2 hide-m">전체평균</th>
+                                    <th class="py-1 px-2 hide-m">최고가</th>
+                                    <th class="py-1 px-2">거래량</th>
+                                </tr></thead>
+                                <tbody>${corps.slice(0,3).map((c,ci)=>{
+                                    const cKg=(kgUnit>0&&c.상위50평균가)?Math.round(c.상위50평균가/kgUnit):0;
+                                    return `<tr class="border-b border-emerald-100">
+                                    <td class="py-1.5 px-3 font-bold text-emerald-800">
+                                        <span class="text-xs ${ci===0?'text-yellow-500':ci===1?'text-gray-400':'text-amber-600'} mr-1">${ci===0?'①':ci===1?'②':'③'}</span>${c.법인}
+                                    </td>
+                                    <td class="py-1.5 px-2 text-center font-black text-emerald-700">${fmt(c.상위50평균가)}원</td>
+                                    <td class="py-1.5 px-2 text-center font-bold text-purple-600">${cKg?fmt(cKg)+'원':'-'}<span class="text-gray-400 font-normal"> /kg</span></td>
+                                    <td class="py-1.5 px-2 text-center text-gray-500 hide-m">${fmt(c.평균가)}원</td>
+                                    <td class="py-1.5 px-2 text-center text-red-400 hide-m">${fmt(c.최고가)}원</td>
+                                    <td class="py-1.5 px-2 text-center text-gray-500">${fmt(c.총거래량)}박스</td>
+                                </tr>`;}).join('')}</tbody>
+                            </table>
+                        </td>
+                    </tr>`:'';
+                    const hasCorps = corps.length > 0;
+                    return `<tr class="border-b border-emerald-50 ${hasCorps?'hover:bg-emerald-50 cursor-pointer':''}" ${hasCorps?`onclick="toggleCorp('corp_${rowId}',this)"`:''}>
+                        <td class="py-2 px-2 text-center ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'text-gray-400 font-bold'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+                        <td class="font-bold text-gray-700 px-2">${m.시장명} ${hasCorps?'<span class="text-emerald-400 text-xs">▼</span>':''}</td>
+                        <td class="text-center font-black text-emerald-600 px-2">${fmt(m.상위50평균가)}원</td>
+                        <td class="text-center font-bold text-purple-600 px-2">${mKg?fmt(mKg)+'원':'-'}<span class="text-gray-400 font-normal"> /kg</span></td>
+                        <td class="text-center text-gray-400 px-2 hide-m">${fmt(m.평균가)}원</td>
+                        <td class="text-center text-gray-500 px-2">${fmt(m.거래량)}박스</td>
+                    </tr>${corpsHtml}`;
+                }).join('')}
+                </tbody></table>
+            </div>`;
+        });
+        html+=`</div></div>`;
+    });
+    html+='</div>';
+    el.innerHTML=html;
+}
+function toggleCorp(id, row){
+    const el=document.getElementById(id);
+    if(!el) return;
+    const open=el.style.display!=='none';
+    el.style.display=open?'none':'table-row';
+    const arrow=row.querySelector('.text-emerald-400');
+    if(arrow) arrow.textContent=open?'▼':'▲';
+}
+
+// ── 정가수의 ──────────────────────────────────────────────────
+function renderJungga(containerId, data, rawRows){
+    const el=document.getElementById(containerId);
+    // data: daily_report (집계), rawRows: total_history (건별)
+    // rawRows가 없으면 집계만 표시
+    const rows = rawRows || [];
+
+    if(!rows.length && (!data||!data.length)){
+        el.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">정가수의 데이터 없음</p>';return;
+    }
+
+    // 품종별 그룹
+    const varietyGroups={};
+    rows.forEach(r=>{
+        const v=r.품종||r.품목||'';
+        if(!varietyGroups[v]) varietyGroups[v]={markets:{}};
+        const m=r.도매시장||'기타';
+        if(!varietyGroups[v].markets[m]) varietyGroups[v].markets[m]=[];
+        varietyGroups[v].markets[m].push(r);
+    });
+
+    // 규격별 평균가 (집계용)
+    const specAvg={};
+    if(data) data.forEach(r=>{
+        const v=r.품종||r.품목||'';
+        if(!specAvg[v]) specAvg[v]={};
+        specAvg[v][r.규격]={평균가:r.평균가, 총거래량:r.총거래량};
+    });
+
+    let html='<div class="p-3 space-y-4">';
+    Object.keys(varietyGroups).sort().forEach(variety=>{
+        const mGroups=varietyGroups[variety].markets;
+        html+=`<div class="border border-purple-100 rounded-xl overflow-hidden shadow-sm">
+            <div class="bg-gradient-to-r from-purple-50 to-violet-50 px-4 py-2.5 flex items-center gap-2 border-b border-purple-100">
+                <span class="w-2 h-2 bg-purple-400 rounded-full"></span>
+                <span class="font-black text-purple-700 text-sm">${variety}</span>
+            </div>`;
+
+        Object.keys(mGroups).sort().forEach(market=>{
+            const mRows=mGroups[market];
+            // 규격>수량>경락가 정렬
+            mRows.sort((a,b)=>parseKg(a.규격)-parseKg(b.규격) || b.거래량-a.거래량 || b.경락가-a.경락가);
+            html+=`<div class="border-b border-purple-50 last:border-b-0">
+                <div class="bg-purple-50 px-4 py-1.5 flex items-center gap-2">
+                    <span class="text-xs font-bold text-purple-600">🏪 ${market}</span>
+                    <span class="text-xs text-purple-300">${mRows.length}건</span>
+                </div>
+                <table class="w-full text-xs">
+                    <thead><tr class="bg-purple-100 text-purple-700">
+                        <th class="py-1.5 px-3 text-left">규격</th>
+                        <th class="py-1.5 px-3 text-center">수량(박스)</th>
+                        <th class="py-1.5 px-3 text-center">경락가</th>
+                        <th class="py-1.5 px-3 text-center">원산지</th>
+                        <th class="py-1.5 px-3 text-center">낙찰일시</th>
+                    </tr></thead>
+                    <tbody>`;
+            mRows.forEach(r=>{
+                html+=`<tr class="border-b border-purple-50 hover:bg-purple-50">
+                    <td class="py-2 px-3 font-bold text-gray-700">${r.규격||'—'}</td>
+                    <td class="py-2 px-3 text-center text-purple-600 font-bold">${fmt(r.거래량)}박스</td>
+                    <td class="py-2 px-3 text-center font-black text-purple-700">${fmt(r.경락가)}원</td>
+                    <td class="py-2 px-3 text-center">${jeju(r.원산지)}</td>
+                    <td class="py-2 px-3 text-center text-gray-400">${r.낙찰일시||'—'}</td>
+                </tr>`;
+            });
+            html+=`</tbody></table></div>`;
+        });
+
+        // 품종 하단 규격별 평균가 요약
+        if(specAvg[variety]&&Object.keys(specAvg[variety]).length){
+            html+=`<div class="bg-purple-700 px-4 py-2 flex flex-wrap gap-4">
+                <span class="text-xs text-purple-200 font-bold self-center">📊 규격별 평균가</span>`;
+            Object.entries(specAvg[variety])
+                .sort((a,b)=>parseKg(a[0])-parseKg(b[0]))
+                .forEach(([spec,v])=>{
+                    html+=`<div class="text-center">
+                        <span class="text-xs text-purple-300">${spec}</span>
+                        <span class="ml-1 text-xs font-black text-white">${fmt(v.평균가)}원</span>
+                        <span class="ml-1 text-xs text-purple-400">(${fmt(v.총거래량)}박스)</span>
+                    </div>`;
+                });
+            html+=`</div>`;
+        }
+        html+=`</div>`;
+    });
+    html+='</div>';
+    el.innerHTML=html;
+}
+
+// ── 전체내역 필터 ─────────────────────────────────────────────
+const totalData={};
+// sortState: { col: 'variety'|'market'|'corp'|'spec'|'price'|'qty'|'time', dir: 'asc'|'desc' }
+const _sortState = {};
+
+function buildFilters(cat,data){
+    totalData[cat]=data;
+    const label = cat==='hobak' ? '품목' : '품종';
+    const varieties=[...new Set(data.map(r=>r.품종||r.품목||''))].filter(Boolean).sort();
+    const specs=[...new Set(data.map(r=>r.규격||''))].filter(Boolean).sort((a,b)=>parseKg(a)-parseKg(b));
+    const markets=[...new Set(data.map(r=>r.도매시장||''))].filter(Boolean).sort();
+    document.getElementById(cat+'-filter-variety').innerHTML=`<option value="">${label} 전체</option>`+varieties.map(v=>`<option value="${v}">${v}</option>`).join('');
+    document.getElementById(cat+'-filter-spec').innerHTML=`<option value="">규격 전체</option>`+specs.map(s=>`<option value="${s}">${s}</option>`).join('');
+    document.getElementById(cat+'-filter-market').innerHTML=`<option value="">시장 전체</option>`+markets.map(m=>`<option value="${m}">${m}</option>`).join('');
+    applyFilter(cat);
+}
+
+function applyFilter(cat){
+    const data=totalData[cat]||[];
+    const vf=document.getElementById(cat+'-filter-variety').value;
+    const sf=document.getElementById(cat+'-filter-spec').value;
+    const mf=document.getElementById(cat+'-filter-market').value;
+    const tf=(document.getElementById(cat+'-filter-text').value||'').trim().toLowerCase();
+
+    // 이상값 감지용 중앙값 계산
+    const grouped={};
+    data.forEach(r=>{
+        const key=(r.품종||r.품목||'')+'_'+(r.규격||'');
+        if(!grouped[key]) grouped[key]=[];
+        grouped[key].push(r.경락가);
+    });
+    const medians={};
+    Object.entries(grouped).forEach(([key,prices])=>{
+        const sorted=[...prices].sort((a,b)=>a-b);
+        const n=sorted.length;
+        medians[key]=n%2===1?sorted[Math.floor(n/2)]:(sorted[n/2-1]+sorted[n/2])/2;
+    });
+
+    const filtered=data.filter(r=>{
+        const v=r.품종||r.품목||'';
+        if(vf&&v!==vf)return false;
+        if(sf&&r.규격!==sf)return false;
+        if(mf&&r.도매시장!==mf)return false;
+        if(tf){const str=[v,r.도매시장,r.법인,r.원산지,r.규격,String(r.경락가)].join(' ').toLowerCase();if(!str.includes(tf))return false;}
+        return true;
+    });
+
+    // 컬럼 정렬 적용
+    const ss = _sortState[cat];
+    if(ss){
+        const {col, dir} = ss;
+        const mul = dir==='asc' ? 1 : -1;
+        filtered.sort((a,b)=>{
+            let va, vb;
+            if(col==='variety')  { va=a.품종||a.품목||''; vb=b.품종||b.품목||''; return mul*va.localeCompare(vb,'ko'); }
+            if(col==='market')   { va=a.도매시장||''; vb=b.도매시장||''; return mul*va.localeCompare(vb,'ko'); }
+            if(col==='corp')     { va=a.법인||''; vb=b.법인||''; return mul*va.localeCompare(vb,'ko'); }
+            if(col==='spec')     { return mul*(parseKg(a.규격)-parseKg(b.규격)); }
+            if(col==='price')    { return mul*(a.경락가-b.경락가); }
+            if(col==='qty')      { return mul*(a.거래량-b.거래량); }
+            if(col==='time')     { va=a.낙찰일시||''; vb=b.낙찰일시||''; return mul*va.localeCompare(vb); }
+            return 0;
+        });
+    }
+
+    const ce=document.getElementById(cat+'-filter-count');
+    if(ce) ce.innerText=`총 ${filtered.length.toLocaleString()}건`;
+    renderTotal(cat+'-total-container', filtered, medians, cat);
+}
+
+function sortCol(cat, col){
+    const ss = _sortState[cat];
+    if(ss && ss.col===col){
+        _sortState[cat] = { col, dir: ss.dir==='asc'?'desc':'asc' };
+    } else {
+        // 가격/거래량은 기본 내림차순, 나머지는 오름차순
+        const defaultDir = (col==='price'||col==='qty') ? 'desc' : 'asc';
+        _sortState[cat] = { col, dir: defaultDir };
+    }
+    applyFilter(cat);
+}
+
+function sortArrow(cat, col){
+    const ss = _sortState[cat];
+    if(!ss || ss.col!==col) return '<span class="text-gray-300 ml-0.5 text-xs">↕</span>';
+    return ss.dir==='asc'
+        ? '<span class="text-yellow-300 ml-0.5 text-xs font-black">↑</span>'
+        : '<span class="text-yellow-300 ml-0.5 text-xs font-black">↓</span>';
+}
+
+function resetFilter(cat){
+    ['variety','spec','market'].forEach(f=>document.getElementById(cat+'-filter-'+f).value='');
+    document.getElementById(cat+'-filter-text').value='';
+    delete _sortState[cat];
+    applyFilter(cat);
+}
+
+// 모바일 감지
+const isMobile = ()=> window.innerWidth < 640;
+
+function renderTotal(containerId, data, medians, cat){
+    const el=document.getElementById(containerId);
+    if(!el) return;
+    if(!data||!data.length){
+        el.innerHTML='<p class="py-10 text-gray-300 text-center text-sm">데이터 없음</p>';
+        return;
+    }
+
+    function isOutlier(r){
+        const key=(r.품종||r.품목||'')+'_'+(r.규격||'');
+        const med=(medians||{})[key];
+        if(!med) return false;
+        return r.경락가<med*0.3||r.경락가>med*3.5;
+    }
+
+    // ── 모바일 카드형 ─────────────────────────────────────────
+    const cardsHtml = `<div class="total-mobile-cards sm:hidden">${data.map((r,i)=>{
+        const v=r.품종||r.품목||'';
+        const outlier=isOutlier(r);
+        return `<div class="total-card-item ${outlier?'bg-red-50':''}">
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-black text-gray-800 text-sm">${v}</span>
+                    <span class="text-xs text-gray-500 font-bold">${r.규격||''}</span>
+                    ${outlier?'<span class="text-xs bg-red-100 text-red-500 px-1.5 py-0.5 rounded-full font-bold">이상값</span>':''}
+                </div>
+                <span class="font-black text-base shrink-0 ${outlier?'text-red-400 line-through':'text-red-600'}">${fmt(r.경락가)}원</span>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                <span>🏪 ${r.도매시장||'—'}</span>
+                <span class="text-gray-500">${r.법인||''}</span>
+                <span>📦 ${fmt(r.거래량)}박스</span>
+                ${r.원산지&&r.원산지.includes('제주')?'<span class="badge-jeju">제주</span>':''}
+                <span class="ml-auto">${(r.낙찰일시||'').slice(5,16)||''}</span>
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+
+    // ── PC 테이블형 - 클릭 정렬 헤더 ────────────────────────
+    const thStyle = 'cursor-pointer select-none hover:bg-orange-700 transition-colors px-2 py-2 whitespace-nowrap';
+    const c = cat || '';
+    const tableHtml = `<div class="total-desktop-table hidden sm:block scroll-x"><table class="data-table">
+        <thead><tr>
+            <th class="px-2 py-2 w-10">NO</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','variety')">품종${sortArrow(c,'variety')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','market')">도매시장${sortArrow(c,'market')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','corp')">법인${sortArrow(c,'corp')}</th>
+            <th class="px-2 py-2">원산지</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','spec')">규격${sortArrow(c,'spec')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','price')">경락가${sortArrow(c,'price')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','qty')">거래량${sortArrow(c,'qty')}</th>
+            <th class="${thStyle}" onclick="sortCol('${c}','time')">낙찰일시${sortArrow(c,'time')}</th>
+        </tr></thead>
+        <tbody>${data.map((r,i)=>{
+            const outlier=isOutlier(r);
+            return `<tr class="${outlier?'bg-red-50':''}">
+                <td class="text-gray-300 text-xs px-2">${i+1}</td>
+                <td class="font-bold text-gray-800 px-2">${r.품종||r.품목||''}</td>
+                <td class="font-bold text-gray-600 px-2">${r.도매시장||''}</td>
+                <td class="text-gray-400 text-xs px-2">${r.법인||''}</td>
+                <td class="text-xs px-2">${jeju(r.원산지)}</td>
+                <td class="px-2">${r.규격||''}</td>
+                <td class="px-2 ${outlier?'text-red-400 line-through':'num-up'}">${fmt(r.경락가)}원
+                    ${outlier?'<span class="ml-1 text-xs bg-red-100 text-red-500 px-1 rounded">이상값</span>':''}
+                </td>
+                <td class="text-gray-600 px-2">${fmt(r.거래량)}</td>
+                <td class="text-gray-400 text-xs px-2">${r.낙찰일시||''}</td>
+            </tr>`;
+        }).join('')}</tbody>
+    </table></div>`;
+
+    el.innerHTML = cardsHtml + tableHtml;
+}
+
+// ── 날짜별 일일리포트 ──────────────────────────────────────────
+const dailyHistory = {};    // cat → { 날짜: daily_report[] }
+const dailySelected = {};   // cat → 선택된 날짜 ('today' or 'YYYY-MM-DD')
+const marketHistory = {};  // cat → { '2026-03-10': [...market_top6...] }
+
+function initDailyDatePicker(cat, trendDaily, todayReport, trendMarket){
+    if(!trendDaily) return;
+    dailyHistory[cat] = trendDaily;   // { '2026-03-09': [...], ... }
+    if(trendMarket) marketHistory[cat] = trendMarket; // { '2026-03-09': [...market_top6...] }
+    dailySelected[cat] = 'today';
+    renderDateBar(cat);
+}
+
+function renderDateBar(cat){
+    const bar = document.getElementById(cat+'-date-bar');
+    if(!bar) return;
+    const history = dailyHistory[cat] || {};
+    const dates = Object.keys(history).sort().reverse();
+
+    if(!dates.length){ bar.innerHTML = ''; return; }
+
+    const selected = dailySelected[cat] || 'today';
+    let optHtml = `<option value="today" ${selected==='today'?'selected':''}>오늘</option>`;
+    dates.forEach(d => {
+        const label = d.replace(/^\d{4}-/, '');
+        optHtml += `<option value="${d}" ${selected===d?'selected':''}>${label}</option>`;
+    });
+    bar.innerHTML = `<select onchange="selectDailyDate('${cat}',this.value)"
+        style="font-size:12px;padding:4px 10px;border:1.5px solid #fdba74;border-radius:8px;
+               background:#fff7ed;color:#ea580c;font-weight:700;cursor:pointer;outline:none;">
+        ${optHtml}
+    </select>`;
+}
+
+function selectDailyDate(cat, date){
+    dailySelected[cat] = date;
+    renderDateBar(cat);
+
+    // 날짜 배지 표시
+    const badge = document.getElementById(cat+'-date-badge');
+    if(badge) {
+        if(date === 'today') { badge.classList.add('hidden'); }
+        else { badge.textContent = date.replace(/^\d{4}-/,'') + ' 데이터'; badge.classList.remove('hidden'); }
+    }
+
+    const isToday = date === 'today';
+    const stats = window._currentStats && window._currentStats[cat];
+    const dailyReport = isToday
+        ? (stats?.auction?.daily_report || [])
+        : ((dailyHistory[cat] || {})[date] || []);
+
+    // ── 일일리포트 ──
+    if(isToday){
+        if(stats) renderDaily(cat+'-daily-container', dailyReport);
+    } else {
+        if(dailyReport.length){
+            renderDaily(cat+'-daily-container', dailyReport, date);
+        } else {
+            const el = document.getElementById(cat+'-daily-container');
+            if(el) el.innerHTML = '<p class="py-10 text-gray-300 text-center text-sm">해당 날짜 데이터 없음</p>';
+        }
+    }
+
+    // ── 상위50% ──
+    if(isToday){
+        if(stats) renderTop50(cat+'-top50-container', stats.auction?.daily_report || []);
+    } else {
+        if(dailyReport.length){
+            renderTop50(cat+'-top50-container', dailyReport);
+        } else {
+            const el = document.getElementById(cat+'-top50-container');
+            if(el) el.innerHTML = '<p class="py-10 text-gray-300 text-center text-sm">해당 날짜 데이터 없음</p>';
+        }
+    }
+
+    // ── 시장TOP6, 정가수의, 전체내역 ──
+    const pastMsg = `<div class="py-10 text-center">
+        <p class="text-gray-300 text-sm mb-1">해당 날짜 시장TOP6 데이터 없음</p>
+        <p class="text-xs text-gray-200">최근 수집 날짜부터 지원됩니다</p>
+    </div>`;
+
+    if(isToday){
+        if(stats){
+            renderMarketTop6(cat+'-market-container', stats.auction?.market_top6 || []);
+            renderJungga(cat+'-jungga-container', stats.jungga?.daily_report || [], stats.jungga?.total_history || []);
+            buildFilters(cat, stats.auction?.total_history || []);
+        }
+    } else {
+        // 과거 날짜: trend.json에 저장된 market_top6 사용
+        const pastMarket = (marketHistory[cat] || {})[date];
+        const mkt = document.getElementById(cat+'-market-container');
+        const jng = document.getElementById(cat+'-jungga-container');
+        const tot = document.getElementById(cat+'-total-container');
+        if(mkt){
+            if(pastMarket && pastMarket.length){
+                renderMarketTop6(cat+'-market-container', pastMarket);
+            } else {
+                mkt.innerHTML = pastMsg;
+            }
+        }
+        if(jng) jng.innerHTML = `<div class="py-10 text-center"><p class="text-gray-300 text-sm">정가수의는 오늘 데이터만 제공</p></div>`;
+        if(tot) tot.innerHTML = `<div class="py-10 text-center"><p class="text-gray-300 text-sm">전체내역은 오늘 데이터만 제공</p></div>`;
+    }
+}
+
+
+const trendData = {};   // cat → 원본 trend 데이터
+const chartInst = {};   // canvasId → Chart 인스턴스
+
+const CHART_COLORS = ['#f97316','#3b82f6','#10b981','#8b5cf6','#ef4444','#f59e0b'];
+
+function initTrendControls(cat, trend){
+    trendData[cat] = trend;
+    // 품종 목록 추출
+    const varietySet = new Set();
+    const specByVariety = {};
+    Object.values(trend).forEach(dayArr=>{
+        dayArr.forEach(row=>{
+            varietySet.add(row.품종);
+            if(!specByVariety[row.품종]) specByVariety[row.품종]=new Set();
+            specByVariety[row.품종].add(row.규격);
+        });
+    });
+    const varieties=[...varietySet].sort();
+    const vSel=document.getElementById(cat+'-trend-variety');
+    vSel.innerHTML=varieties.map(v=>`<option value="${v}">${v}</option>`).join('');
+    vSel._specMap = specByVariety;
+
+    function updateSpecs(){
+        const v=vSel.value;
+        const specs=[...((specByVariety[v])||[])].sort((a,b)=>parseKg(a)-parseKg(b));
+        document.getElementById(cat+'-trend-spec').innerHTML=specs.map(s=>`<option value="${s}">${s}</option>`).join('');
+        drawTrend(cat);
+    }
+    vSel.onchange=updateSpecs;
+    updateSpecs();
+}
+
+function drawTrend(cat){
+    const trend=trendData[cat];
+    if(!trend) return;
+
+    const variety=document.getElementById(cat+'-trend-variety').value;
+    const spec=document.getElementById(cat+'-trend-spec').value;
+    const days=parseInt(document.getElementById(cat+'-trend-days').value)||30;
+
+    // 날짜 정렬 후 최근 N일
+    const allDates=Object.keys(trend).sort();
+    const dates=allDates.slice(-days);
+
+    const prices=[], vols=[], top50prices=[];
+    dates.forEach(d=>{
+        const rows=(trend[d]||[]).filter(r=>r.품종===variety&&r.규격===spec);
+        if(rows.length>0){
+            prices.push(rows[0].평균가);
+            vols.push(rows[0].총거래량);
+        } else {
+            prices.push(null);
+            vols.push(null);
+        }
+        // 상위50% 평균가 → dailyHistory에서
+        const dailyRows = ((dailyHistory[cat]||{})[d]||[]).filter(r=>r.품종===variety&&r.규격===spec);
+        top50prices.push(dailyRows.length>0 ? (dailyRows[0].상위50평균가||null) : null);
+    });
+
+    // 가격 차트
+    const priceCanvasId=cat+'-trend-chart';
+    if(chartInst[priceCanvasId]) chartInst[priceCanvasId].destroy();
+    const ctx=document.getElementById(priceCanvasId).getContext('2d');
+    chartInst[priceCanvasId]=new Chart(ctx,{
+        type:'line',
+        data:{
+            labels:dates,
+            datasets:[
+                {
+                    label:`전체 평균가`,
+                    data:prices,
+                    borderColor:'#f97316', backgroundColor:'rgba(249,115,22,0.07)',
+                    borderWidth:2.5, pointRadius:4, pointHoverRadius:6,
+                    tension:0.3, fill:true, spanGaps:true
+                },
+                {
+                    label:`상위50% 평균가`,
+                    data:top50prices,
+                    borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.0)',
+                    borderWidth:2, pointRadius:3, pointHoverRadius:5,
+                    borderDash:[5,3], tension:0.3, fill:false, spanGaps:true
+                }
+            ]
+        },
+        options:{
+            responsive:true, maintainAspectRatio:false,
+            plugins:{
+                legend:{display:true, position:'top', labels:{font:{size:11}, boxWidth:14, usePointStyle:true}},
+                tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.raw)}원`}}
+            },
+            scales:{
+                x:{ticks:{font:{size:10},maxRotation:45},grid:{display:false}},
+                y:{ticks:{callback:v=>fmt(v)+'원', font:{size:10}},grid:{color:'#f3f4f6'}}
+            }
+        }
+    });
+
+    // 요약 카드
+    const validP=prices.filter(p=>p!==null);
+    const validT=top50prices.filter(p=>p!==null);
+    const sumEl=document.getElementById(cat+'-trend-summary');
+    if(validP.length>0){
+        const avg=Math.round(validP.reduce((a,b)=>a+b,0)/validP.length);
+        const avgTop50=validT.length>0?Math.round(validT.reduce((a,b)=>a+b,0)/validT.length):null;
+        const maxP=Math.max(...validP), minP=Math.min(...validP);
+        const last=validP[validP.length-1], prev=validP[validP.length-2];
+        const diff=prev!=null?last-prev:0;
+        const diffStr=diff>0?`▲${fmt(diff)}`:diff<0?`▼${fmt(Math.abs(diff))}`:'-';
+        const diffColor=diff>0?'text-red-500':diff<0?'text-blue-500':'text-gray-400';
+        sumEl.innerHTML=`
+            <div class="bg-orange-50 rounded-xl p-3 text-center"><p class="text-xs text-orange-400 mb-1">${days}일 전체평균</p><p class="text-lg font-black text-orange-600">${fmt(avg)}원</p></div>
+            <div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 mb-1">${days}일 상위50%평균</p><p class="text-lg font-black text-red-500">${avgTop50?fmt(avgTop50)+'원':'-'}</p></div>
+            <div class="bg-blue-50 rounded-xl p-3 text-center"><p class="text-xs text-blue-400 mb-1">최고가</p><p class="text-lg font-black text-blue-600">${fmt(maxP)}원</p></div>
+            <div class="bg-gray-50 rounded-xl p-3 text-center"><p class="text-xs text-gray-400 mb-1">전일 대비</p><p class="text-lg font-black ${diffColor}">${diffStr}</p></div>`;
+    } else {
+        sumEl.innerHTML='<p class="text-gray-300 text-sm col-span-4 text-center py-2">데이터 부족</p>';
+    }
+
+    // 거래량 추이 차트 (품종 전체)
+    drawVolChart(cat, days);
+}
+
+function drawVolChart(cat, days){
+    const trend=trendData[cat];
+    if(!trend) return;
+    const allDates=Object.keys(trend).sort().slice(-days);
+
+    // 품종별로
+    const varietySet=new Set();
+    Object.values(trend).forEach(arr=>arr.forEach(r=>varietySet.add(r.품종)));
+    const varieties=[...varietySet].sort();
+
+    const datasets=varieties.map((v,i)=>({
+        label:v,
+        data:allDates.map(d=>{
+            const rows=(trend[d]||[]).filter(r=>r.품종===v);
+            return rows.reduce((s,r)=>s+r.총거래량,0)||null;
+        }),
+        borderColor:CHART_COLORS[i%CHART_COLORS.length],
+        backgroundColor:CHART_COLORS[i%CHART_COLORS.length]+'22',
+        borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:true
+    }));
+
+    const volCanvasId=cat+'-vol-chart';
+    if(chartInst[volCanvasId]) chartInst[volCanvasId].destroy();
+    const ctx=document.getElementById(volCanvasId).getContext('2d');
+    chartInst[volCanvasId]=new Chart(ctx,{
+        type:'line',
+
+/* ====== drawVolChart 마무리 (기존 잘린 부분) ====== */
+        data:{ labels:allDates, datasets:datasets },
+        options:{
+            responsive:true, maintainAspectRatio:false,
+            plugins:{ legend:{display:true, position:'top', labels:{font:{size:11}, boxWidth:14, usePointStyle:true}},
+                tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw!=null?fmt(ctx.raw)+'박스':'-'}`}} },
+            scales:{ x:{ticks:{font:{size:10},maxRotation:45},grid:{display:false}},
+                y:{ticks:{callback:v=>fmtT(v), font:{size:10}},grid:{color:'#f3f4f6'}} }
+        }
+    });
+}
+
+/* ============================================================
+   ▼▼▼  여기부터 신규: 엑셀 적재 · 집계 · 분류 · 계산기 · 초기화  ▼▼▼
+   ============================================================ */
+
+const CATS = ['hobak','gamgyul','mangam'];
+// 품종 키워드 → 카테고리 라우팅 (확장 지점)
+const MANGAM_KW = ['천혜향','한라봉','레드향','황금향','카라향','진지향','천백향'];
+const GAMGYUL_KW = ['감귤','노지','하우스감귤','타이벡'];
+// 제주만 표시할 카테고리
+const JEJU_ONLY = { hobak:true, gamgyul:false, mangam:false };
+
+let todayPrices = {};   // 계산기 힌트용 (품종→평균가)
+let lastUpdate = '';
+
+const N = v => { if(v==null||v==='') return 0; const n=parseFloat(String(v).replace(/[, ]/g,'')); return isNaN(n)?0:n; };
+const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+function boxKgOf(spec){ const m=String(spec||'').match(/[\d.]+/); return m?parseFloat(m[0]):0; }
+
+function categoryOf(row){
+    const pum=(row.품목||'')+'', jong=(row.품종||'')+'', origin=(row.원산지||'')+'';
+    if(MANGAM_KW.some(k=>jong.includes(k)||pum.includes(k))) return 'mangam';
+    if(GAMGYUL_KW.some(k=>jong.includes(k)||pum.includes(k))) return 'gamgyul';
+    if(pum.includes('호박')||jong.includes('호박')) return origin.includes('제주') ? 'hobak' : (JEJU_ONLY.hobak ? null : 'hobak');
+    return null;
+}
+
+/* ---------- localStorage 저장소 ---------- */
+const STORE_KEY = 'dolmang_dc_v1';
+function loadStore(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY))||{}; }catch(e){ return {}; } }
+function saveStore(s){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+    catch(e){
+        // 용량 초과 → 오래된 날짜의 원본행(rows)만 제거하고 재시도
+        const dates=[];
+        CATS.forEach(c=>{ Object.keys(s[c]||{}).forEach(d=>dates.push(d)); });
+        [...new Set(dates)].sort().slice(0, Math.ceil(dates.length/3)).forEach(d=>{
+            CATS.forEach(c=>{ if(s[c]&&s[c][d]) delete s[c][d].rows; });
+        });
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }catch(e2){ alert('저장 공간이 부족합니다. 일부 과거 원본데이터가 정리됩니다.'); }
+    }
+}
+
+/* ---------- 집계 빌더 ---------- */
+function aggStat(arr){
+    const prices=arr.map(r=>r.경락가);
+    const sd=[...arr].sort((a,b)=>b.경락가-a.경락가);
+    const half=Math.max(1,Math.ceil(arr.length/2));
+    const top=sd.slice(0,half);
+    return { avg:Math.round(mean(prices)), top50:Math.round(mean(top.map(r=>r.경락가))),
+             top50qty:top.reduce((s,r)=>s+r.거래량,0), max:Math.max(...prices), min:Math.min(...prices),
+             qty:arr.reduce((s,r)=>s+r.거래량,0), wt:Math.round(arr.reduce((s,r)=>s+r.거래량*r.boxKg,0)) };
+}
+function buildDaily(rows){
+    const g={};
+    rows.forEach(r=>{ const v=r.품종||r.품목; const k=v+'|'+r.규격; (g[k]=g[k]||[]).push(r); });
+    return Object.values(g).map(arr=>{
+        const s=aggStat(arr);
+        return { 품목:arr[0].품목, 품종:arr[0].품종||arr[0].품목, 규격:arr[0].규격,
+                 평균가:s.avg, 최고가:s.max, 최저가:s.min, 총거래량:s.qty, 총중량:s.wt,
+                 상위50평균가:s.top50, 상위50거래량:s.top50qty };
+    });
+}
+function buildMarket(rows){
+    const g={};
+    rows.forEach(r=>{ const v=r.품종||r.품목; const k=v+'|'+r.규격; (g[k]=g[k]||[]).push(r); });
+    return Object.entries(g).map(([k,arr])=>{
+        const v=arr[0].품종||arr[0].품목, spec=arr[0].규격;
+        const mg={}; arr.forEach(r=>{ (mg[r.도매시장||'기타']=mg[r.도매시장||'기타']||[]).push(r); });
+        const markets=Object.entries(mg).map(([mk,mrows])=>{
+            const st=aggStat(mrows);
+            const cg={}; mrows.forEach(r=>{ (cg[r.법인||'-']=cg[r.법인||'-']||[]).push(r); });
+            const corps=Object.entries(cg).map(([cp,cr])=>{ const cs=aggStat(cr);
+                return { 법인:cp, 상위50평균가:cs.top50, 평균가:cs.avg, 최고가:cs.max, 총거래량:cs.qty }; })
+                .sort((a,b)=>b.상위50평균가-a.상위50평균가);
+            return { 시장명:mk, 상위50평균가:st.top50, 평균가:st.avg, 거래량:st.qty, 법인목록:corps };
+        }).sort((a,b)=>b.상위50평균가-a.상위50평균가).slice(0,6);
+        return { 품목:arr[0].품목, 품종:v, 규격:spec, 시장목록:markets };
+    });
+}
+function toHistory(rows){
+    return rows.map(r=>({ 품목:r.품목, 품종:r.품종, 도매시장:r.도매시장, 법인:r.법인, 원산지:r.원산지,
+                          규격:r.규격, 경락가:r.경락가, 거래량:r.거래량, 낙찰일시:r.낙찰일시 }));
+}
+function toTrend(daily){ return daily.map(r=>({ 품종:r.품종, 규격:r.규격, 평균가:r.평균가, 총거래량:r.총거래량 })); }
+
+function rebuildDateAgg(rows){   // 한 (카테고리·날짜)의 원본행 → 집계 묶음
+    const auc = rows.filter(r=>(r.매매구분||'').includes('경매'));
+    const jng = rows.filter(r=>{ const m=r.매매구분||''; return m.includes('정가')||m.includes('수의'); });
+    return {
+        rows: rows,
+        daily: buildDaily(auc), market: buildMarket(auc), total: toHistory(auc),
+        jdaily: buildDaily(jng), jtotal: toHistory(jng),
+        trend: toTrend(buildDaily(auc))
+    };
+}
+
+/* ---------- 엑셀 파일 처리 ---------- */
+const HEADERS = ['거래일자','경락일시','도매시장','법인','매매구분','부류','품목','품종','출하지','규격','거래량','경락가'];
+function normalizeRows(matrix){
+    // 헤더행 탐색
+    let hr=-1;
+    for(let i=0;i<Math.min(matrix.length,8);i++){
+        const set=new Set(matrix[i].map(x=>String(x).trim()));
+        if(set.has('경락가') && (set.has('품종')||set.has('품목'))){ hr=i; break; }
+    }
+    if(hr<0) return [];
+    const idx={}; matrix[hr].forEach((h,i)=>{ idx[String(h).trim()]=i; });
+    const get=(row,name)=> idx[name]!=null ? row[idx[name]] : '';
+    const out=[];
+    for(let i=hr+1;i<matrix.length;i++){
+        const row=matrix[i]; if(!row||!row.length) continue;
+        const price=N(get(row,'경락가')); if(!price) continue;
+        const spec=String(get(row,'규격')||'').trim();
+        out.push({
+            date: String(get(row,'거래일자')||'').trim().slice(0,10),
+            낙찰일시: String(get(row,'경락일시')||'').trim(),
+            도매시장: String(get(row,'도매시장')||'').trim(),
+            법인: String(get(row,'법인')||'').trim(),
+            매매구분: String(get(row,'매매구분')||'').trim(),
+            품목: String(get(row,'품목')||'').trim(),
+            품종: String(get(row,'품종')||'').trim(),
+            원산지: String(get(row,'출하지')||'').trim(),
+            규격: spec,
+            거래량: N(get(row,'거래량')),
+            경락가: price,
+            boxKg: boxKgOf(spec)
+        });
+    }
+    return out;
+}
+const rowKey = r => [r.낙찰일시,r.도매시장,r.법인,r.규격,r.경락가,r.거래량].join('|');
+
+function ingestRows(allRows){
+    const store=loadStore();
+    let added=0, skipped=0;
+    const touched={}; // cat -> Set(date)
+    allRows.forEach(r=>{
+        const cat=categoryOf(r);
+        if(!cat){ skipped++; return; }
+        const d=r.date||'미상';
+        store[cat]=store[cat]||{};
+        store[cat][d]=store[cat][d]||{rows:[]};
+        store[cat][d].rows=store[cat][d].rows||[];
+        const existing=new Set(store[cat][d].rows.map(rowKey));
+        if(!existing.has(rowKey(r))){ store[cat][d].rows.push(r); added++; }
+        (touched[cat]=touched[cat]||new Set()).add(d);
+        if(d!=='미상') lastUpdate = d>lastUpdate ? d : lastUpdate;
+    });
+    // 변경된 날짜만 재집계
+    Object.entries(touched).forEach(([cat,dates])=>{
+        dates.forEach(d=>{ store[cat][d]={ ...rebuildDateAgg(store[cat][d].rows) }; });
+    });
+    saveStore(store);
+    return {added, skipped};
+}
+
+function handleFiles(fileList){
+    const files=[...fileList]; if(!files.length) return;
+    const log=document.getElementById('upload-log');
+    let done=0, allRows=[], names=[];
+    files.forEach(file=>{
+        const reader=new FileReader();
+        reader.onload=e=>{
+            try{
+                const wb=XLSX.read(e.target.result, {type:'array'});
+                wb.SheetNames.forEach(sn=>{
+                    const mat=XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, raw:false, defval:''});
+                    allRows=allRows.concat(normalizeRows(mat));
+                });
+                names.push(file.name);
+            }catch(err){ names.push(file.name+' (읽기실패)'); }
+            done++;
+            if(done===files.length){
+                const res=ingestRows(allRows);
+                rebuildAll();
+                log.innerHTML = `<div class="text-green-600 font-bold">✅ ${names.length}개 파일 처리 · ${res.added.toLocaleString()}행 반영${res.skipped?` · 분류제외 ${res.skipped.toLocaleString()}행`:''}</div>`
+                    + `<div class="text-gray-400">${names.map(n=>'• '+n).join('<br>')}</div>`;
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function clearAllData(){
+    if(!confirm('저장된 모든 경매 데이터(누적 트렌드 포함)를 삭제할까요?')) return;
+    localStorage.removeItem(STORE_KEY);
+    location.reload();
+}
+
+/* ---------- 화면 재구성 ---------- */
+function rebuildAll(){
+    const store=loadStore();
+    window._currentStats=window._currentStats||{};
+    let anyData=false, latestOverall='';
+    CATS.forEach(cat=>{
+        const catStore=store[cat]||{};
+        const dates=Object.keys(catStore).filter(d=>d!=='미상').sort();
+        const dailyEl=document.getElementById(cat+'-daily-container');
+        if(!dates.length){
+            window._currentStats[cat]={auction:{daily_report:[],market_top6:[],total_history:[]},jungga:{daily_report:[],total_history:[]}};
+            if(dailyEl) dailyEl.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">엑셀을 업로드하면 표시됩니다</p>';
+            // 트렌드 셀렉트 비우기
+            return;
+        }
+        anyData=true;
+        const today=dates[dates.length-1];
+        if(today>latestOverall) latestOverall=today;
+        const td=catStore[today];
+        window._currentStats[cat]={
+            auction:{ daily_report:td.daily||[], market_top6:td.market||[], total_history:td.total||[] },
+            jungga:{ daily_report:td.jdaily||[], total_history:td.jtotal||[] }
+        };
+        // 오늘 화면
+        renderDaily(cat+'-daily-container', td.daily||[]);
+        renderTop50(cat+'-top50-container', td.daily||[]);
+        renderMarketTop6(cat+'-market-container', td.market||[]);
+        renderJungga(cat+'-jungga-container', td.jdaily||[], td.jtotal||[]);
+        buildFilters(cat, td.total||[]);
+        // 트렌드(전체 날짜) / 과거 날짜(오늘 제외)
+        const trend={}, dHist={}, mHist={};
+        dates.forEach(d=>{ trend[d]=catStore[d].trend||[]; });
+        dates.filter(d=>d!==today).forEach(d=>{ dHist[d]=catStore[d].daily||[]; mHist[d]=catStore[d].market||[]; });
+        initTrendControls(cat, trend);
+        initDailyDatePicker(cat, dHist, td.daily, mHist);
+    });
+    // 계산기 힌트 가격
+    todayPrices={};
+    ['mangam','gamgyul'].forEach(cat=>{
+        const dr=(window._currentStats[cat]||{}).auction?.daily_report||[];
+        const byV={}; dr.forEach(r=>{ const v=r.품종||r.품목; if(!byV[v]||r.총거래량>byV[v].총거래량) byV[v]=r; });
+        Object.entries(byV).forEach(([v,r])=>{ todayPrices[v]=r.평균가; });
+    });
+    updateTodayHint();
+    const ut=document.getElementById('update-time');
+    if(ut) ut.textContent = anyData ? `최신 ${latestOverall||lastUpdate} 기준` : '데이터 없음 · 엑셀 업로드';
+}
+function manualRefresh(){ rebuildAll(); }
+
+/* ============================================================
+   수익예상계산기
+   ============================================================ */
+let workType='선과장';
+const FEE_DEFAULTS={commission:6,transport:1800,unload:240,sorting:2500,packing:1550,fund:96};
+const SPEC_MAP={
+    천혜향:['3kg','5kg','9kg','10kg'], 한라봉:['3kg','5kg','9kg','10kg'],
+    레드향:['3kg','5kg','9kg','10kg'], 카라향:['3kg','5kg','9kg','10kg'],
+    감귤:['3kg','5kg','10kg','15kg']
+};
+function setWorkType(t){
+    workType=t;
+    const a=document.getElementById('wtype-sungwa'), b=document.getElementById('wtype-direct');
+    const on='border-orange-400 bg-orange-50 text-orange-700 font-black', off='border-gray-200 bg-white text-gray-400 font-bold';
+    if(t==='선과장'){ a.className='flex-1 py-2 px-3 rounded-lg border-2 text-xs transition-all '+on; b.className='flex-1 py-2 px-3 rounded-lg border-2 text-xs transition-all '+off; }
+    else { b.className='flex-1 py-2 px-3 rounded-lg border-2 text-xs transition-all '+on; a.className='flex-1 py-2 px-3 rounded-lg border-2 text-xs transition-all '+off; }
+    document.getElementById('f-etc-row').style.display = (t==='선과장')?'flex':'none';
+    document.getElementById('calc-banner-desc').textContent = (t==='선과장')?'선과장 작업 기준 · 도매시장 출하':'직접 작업 기준 · 도매시장 출하';
+    calcProfit();
+}
+function updateSpecOptions(keep){
+    const v=document.getElementById('c-variety').value;
+    const specs=SPEC_MAP[v]||['9kg'];
+    const sel=document.getElementById('c-spec');
+    const prev=keep||sel.value;
+    sel.innerHTML=specs.map(s=>`<option value="${s}">${s}</option>`).join('');
+    if(specs.includes(prev)) sel.value=prev;
+    updateTodayHint(); calcProfit();
+}
+function resetFees(){
+    document.getElementById('f-commission').value=FEE_DEFAULTS.commission;
+    document.getElementById('f-transport').value=FEE_DEFAULTS.transport;
+    document.getElementById('f-unload').value=FEE_DEFAULTS.unload;
+    document.getElementById('f-sorting').value=FEE_DEFAULTS.sorting;
+    document.getElementById('f-packing').value=FEE_DEFAULTS.packing;
+    document.getElementById('f-fund').value=FEE_DEFAULTS.fund;
+    calcProfit();
+}
+function fillTodayPrice(){
+    const v=document.getElementById('c-variety').value;
+    if(todayPrices[v]){ document.getElementById('c-sellprice').value=Math.round(todayPrices[v]); calcProfit(); }
+}
+function dash(){ return '—'; }
+function calcProfit(){
+    const specKg=boxKgOf(document.getElementById('c-spec').value)||9;
+    const buy=N(document.getElementById('c-buyprice').value);
+    const qty=N(document.getElementById('c-qty').value);
+    const sell=N(document.getElementById('c-sellprice').value);
+    const commR=N(document.getElementById('f-commission').value)/100;
+    const etcR=(workType==='선과장')?0.02:0;
+    const transport=N(document.getElementById('f-transport').value);
+    const unload=N(document.getElementById('f-unload').value);
+    const sorting=N(document.getElementById('f-sorting').value);
+    const packing=N(document.getElementById('f-packing').value);
+    const fund=N(document.getElementById('f-fund').value);
+    const fixed=transport+unload+sorting+packing+fund;
+
+    // 매입가(박스)
+    const buyPer=Math.round(buy*specKg);
+    // 손익분기 경락가
+    const denom=1-commR-etcR;
+    const breakeven = denom>0 ? Math.round((buyPer+fixed)/denom) : 0;
+    document.getElementById('r-breakeven').textContent = breakeven? fmt(breakeven):dash();
+    document.getElementById('r-breakeven-kg').textContent = breakeven&&specKg? `≈ ${fmt(Math.round(breakeven/specKg))}원/kg`:'';
+
+    // 박스당
+    const deductPer = Math.round(sell*commR + sell*etcR + fixed);
+    const netPer = sell - deductPer;
+    const profitPer = netPer - buyPer;
+    const margin = buyPer>0 ? (profitPer/buyPer*100) : 0;
+
+    document.getElementById('f-commission-val').textContent = sell? fmt(Math.round(sell*commR))+'원':'';
+    document.getElementById('f-transport-val').textContent = transport? fmt(transport)+'원':'';
+    document.getElementById('f-unload-val').textContent = unload? fmt(unload)+'원':'';
+    document.getElementById('f-sorting-val').textContent = sorting? fmt(sorting)+'원':'';
+    document.getElementById('f-packing-val').textContent = packing? fmt(packing)+'원':'';
+    document.getElementById('f-fund-val').textContent = fund? fmt(fund)+'원':'';
+    document.getElementById('f-etc-val').textContent = (etcR&&sell)? fmt(Math.round(sell*etcR))+'원':'';
+    document.getElementById('f-total-deduct').textContent = sell? fmt(deductPer)+'원':dash();
+
+    document.getElementById('r-sellprice').textContent = sell? fmt(sell)+'원':dash();
+    document.getElementById('r-sellprice-kg').textContent = (sell&&specKg)? fmt(Math.round(sell/specKg))+'원/kg':'';
+    document.getElementById('r-deduct').textContent = sell? fmt(deductPer)+'원':dash();
+    document.getElementById('r-net').textContent = sell? fmt(netPer)+'원':dash();
+    document.getElementById('r-buyprice').textContent = buyPer? fmt(buyPer)+'원':dash();
+    const pp=document.getElementById('r-profit-per');
+    pp.textContent = (sell&&buy)? (profitPer>=0?'+':'')+fmt(profitPer)+'원':dash();
+    pp.className='text-base font-black '+(profitPer>=0?'text-green-600':'text-red-500');
+    const mg=document.getElementById('r-margin');
+    mg.textContent = (sell&&buy)? margin.toFixed(1)+'%':dash();
+    mg.className='text-sm font-bold '+(margin>=0?'text-green-600':'text-red-500');
+
+    // 전체
+    document.getElementById('r-total-cost').textContent = (buy&&qty)? fmt(buyPer*qty)+'원':dash();
+    document.getElementById('r-total-net').textContent = (sell&&qty)? fmt(netPer*qty)+'원':dash();
+    document.getElementById('r-total-deduct').textContent = (sell&&qty)? fmt(deductPer*qty)+'원':dash();
+    const tp=document.getElementById('r-total-profit');
+    const totProfit=profitPer*qty;
+    tp.textContent = (sell&&buy&&qty)? (totProfit>=0?'+':'')+fmt(totProfit)+'원':dash();
+    const card=document.getElementById('r-total-profit-card');
+    if(sell&&buy&&qty){ card.className='rounded-xl p-3 text-center '+(totProfit>=0?'bg-green-50':'bg-red-50');
+        tp.className='text-base font-black '+(totProfit>=0?'text-green-600':'text-red-500'); }
+
+    // 시뮬레이션
+    const base = sell || breakeven || 0;
+    const tb=document.getElementById('sim-tbody');
+    if(!base){ tb.innerHTML='<tr><td colspan="6" class="py-4 text-center text-gray-300">경락가를 입력하세요</td></tr>'; return; }
+    const steps=[-0.10,-0.05,0,0.05,0.10,0.15];
+    tb.innerHTML=steps.map(st=>{
+        const p=Math.round(base*(1+st)/100)*100;
+        const d=Math.round(p*commR+p*etcR+fixed);
+        const net=p-d, prof=net-buyPer, mr=buyPer>0?(prof/buyPer*100):0;
+        const hl = st===0?'background:#fff7ed;font-weight:800;':'';
+        return `<tr style="${hl}">
+            <td>${fmt(p)}</td><td class="text-red-400">${fmt(d)}</td>
+            <td class="text-blue-600">${fmt(net)}</td>
+            <td class="${prof>=0?'text-green-600':'text-red-500'} font-bold">${prof>=0?'+':''}${fmt(prof)}</td>
+            <td class="hide-m ${mr>=0?'text-green-600':'text-red-500'}">${mr.toFixed(1)}%</td>
+            <td class="${prof>=0?'text-green-600':'text-red-500'}">${qty?((prof*qty>=0?'+':'')+fmt(prof*qty)):'-'}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* ============================================================
+   초기화
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', ()=>{
+    // 드래그앤드롭
+    const dz=document.getElementById('drop-zone');
+    if(dz){
+        ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.background='#fed7aa';}));
+        ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.background='#fffaf5';}));
+        dz.addEventListener('drop',e=>{ if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+    }
+    // 계산기 초기화
+    updateSpecOptions('9kg');
+    setWorkType('선과장');
+    // 저장된 데이터 렌더
+    rebuildAll();
+});
+
+</script>
+</body>
+</html>
