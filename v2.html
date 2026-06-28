@@ -146,9 +146,12 @@
             .market-top6-table th,
             .market-top6-table td { padding:5px 4px !important; }
 
-            /* 전체내역 - 카드형 */
-            .total-desktop-table { display:none !important; }
-            .total-mobile-cards { display:block !important; }
+            /* 전체내역 - 모바일도 PC와 동일한 정렬 표(가로스크롤) */
+            .total-desktop-table { display:block !important; }
+            .total-mobile-cards { display:none !important; }
+            .total-desktop-table .data-table { font-size:12px; }
+            .total-desktop-table .data-table th { padding:8px 8px; }
+            .total-desktop-table .data-table td { padding:7px 8px; }
 
             /* 수익예상계산 */
             .calc-grid { grid-template-columns:1fr !important; }
