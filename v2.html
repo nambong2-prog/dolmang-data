@@ -226,6 +226,15 @@
   #report-root .r-bar{grid-template-columns:74px 1fr 64px}
 }
 
+
+/* ===== 통합 기간바 ===== */
+.period-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:0 4px}
+.period-bar .pm-btn{padding:6px 13px;border-radius:18px;font-size:12px;font-weight:700;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer}
+.period-bar .pm-btn.on{background:#c2410c;color:#fff;border-color:#c2410c}
+.period-bar input[type=date]{border:1px solid #d1d5db;border-radius:8px;padding:6px 8px;font-size:13px;background:#fff;color:#374151;min-height:34px}
+.period-bar .pm-label{font-size:12px;color:#9ca3af;font-weight:700;margin-left:2px}
+@media(max-width:639px){ .period-bar{gap:5px} .period-bar .pm-btn{padding:6px 10px;font-size:11px} .period-bar input[type=date]{font-size:12px;padding:5px 6px} .period-bar .pm-label{width:100%;margin-left:0} }
+
 </style>
 </head>
 <body>
@@ -315,10 +324,15 @@
 <!-- ===== 만감류 ===== -->
 <div id="tab-mangam" class="tab-content">
     <!-- 날짜 선택기 -->
-    <div id="mangam-date-header" class="flex items-center gap-2 mb-3 px-1">
-        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
-        <div id="mangam-date-bar"></div>
-        <span id="mangam-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    <div class="period-bar" id="mangam-period">
+        <span class="text-xs font-bold text-gray-500">📅</span>
+        <button class="pm-btn on" onclick="setPeriodMode('mangam','day',this)">일간</button>
+        <button class="pm-btn" onclick="setPeriodMode('mangam','week',this)">주간</button>
+        <button class="pm-btn" onclick="setPeriodMode('mangam','month',this)">월간</button>
+        <button class="pm-btn" onclick="setPeriodMode('mangam','range',this)">기간</button>
+        <input type="date" id="mangam-date" onchange="applyPeriod('mangam')">
+        <span id="mangam-range2" style="display:none">~ <input type="date" id="mangam-date2" onchange="applyPeriod('mangam')"></span>
+        <span class="pm-label" id="mangam-period-label"></span>
     </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('mangam','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
@@ -410,10 +424,15 @@
 <!-- ===== 감귤 ===== -->
 <div id="tab-gamgyul" class="tab-content">
     <!-- 날짜 선택기 -->
-    <div id="gamgyul-date-header" class="flex items-center gap-2 mb-3 px-1">
-        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
-        <div id="gamgyul-date-bar"></div>
-        <span id="gamgyul-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    <div class="period-bar" id="gamgyul-period">
+        <span class="text-xs font-bold text-gray-500">📅</span>
+        <button class="pm-btn on" onclick="setPeriodMode('gamgyul','day',this)">일간</button>
+        <button class="pm-btn" onclick="setPeriodMode('gamgyul','week',this)">주간</button>
+        <button class="pm-btn" onclick="setPeriodMode('gamgyul','month',this)">월간</button>
+        <button class="pm-btn" onclick="setPeriodMode('gamgyul','range',this)">기간</button>
+        <input type="date" id="gamgyul-date" onchange="applyPeriod('gamgyul')">
+        <span id="gamgyul-range2" style="display:none">~ <input type="date" id="gamgyul-date2" onchange="applyPeriod('gamgyul')"></span>
+        <span class="pm-label" id="gamgyul-period-label"></span>
     </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('gamgyul','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
@@ -486,10 +505,15 @@
 <!-- ===== 제주호박 ===== -->
 <div id="tab-hobak" class="tab-content active">
     <!-- 날짜 선택기 -->
-    <div id="hobak-date-header" class="flex items-center gap-2 mb-3 px-1">
-        <span class="text-xs font-bold text-gray-500">📅 날짜</span>
-        <div id="hobak-date-bar"></div>
-        <span id="hobak-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
+    <div class="period-bar" id="hobak-period">
+        <span class="text-xs font-bold text-gray-500">📅</span>
+        <button class="pm-btn on" onclick="setPeriodMode('hobak','day',this)">일간</button>
+        <button class="pm-btn" onclick="setPeriodMode('hobak','week',this)">주간</button>
+        <button class="pm-btn" onclick="setPeriodMode('hobak','month',this)">월간</button>
+        <button class="pm-btn" onclick="setPeriodMode('hobak','range',this)">기간</button>
+        <input type="date" id="hobak-date" onchange="applyPeriod('hobak')">
+        <span id="hobak-range2" style="display:none">~ <input type="date" id="hobak-date2" onchange="applyPeriod('hobak')"></span>
+        <span class="pm-label" id="hobak-period-label"></span>
     </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('hobak','report',this);renderReportTab()" class="sub-btn bg-orange-500 text-white">📑 리포트</button>
@@ -501,17 +525,6 @@
         <button onclick="changeSubTab('hobak','total',this)" class="sub-btn bg-gray-100 text-gray-600">📋 전체내역</button>
     </div>
     <div id="hobak-report" class="sub-tab-content active">
-      <div class="report-controls">
-        <div class="rc-left">
-          <span class="rc-lab">기간</span>
-          <select id="report-sub" onchange="renderReportTab()"></select>
-        </div>
-        <div id="report-period-bar" class="rc-right">
-          <button class="rp-btn on" onclick="setReportType('day',this)">일간</button>
-          <button class="rp-btn" onclick="setReportType('week',this)">주간</button>
-          <button class="rp-btn" onclick="setReportType('month',this)">월간</button>
-        </div>
-      </div>
       <div id="report-root"><div id="report-body"></div></div>
     </div>
     <div id="hobak-daily" class="sub-tab-content">
@@ -1634,7 +1647,7 @@ const JEJU_ONLY = { hobak:true, gamgyul:false, mangam:false };
 // ── 깃허브 저장소 설정 (수정 지점) ──
 const GH = { owner:'nambong2-prog', repo:'dolmang-data', branch:'main', path:'v2-data.json' };
 const TOKEN_KEY = 'dolmang_gh_token';
-const RECENT_DAYS = 21;          // 최근 N일은 상세(전체내역/정가수의 포함), 그 이전은 요약만 저장
+const RECENT_DAYS = 31;          // 최근 N일은 상세(전체내역/정가수의 포함), 그 이전은 요약만 저장
 
 let DB = { hobak:{}, gamgyul:{}, mangam:{} };   // DB[cat][date] = {archived, total[], jtotal[], daily, market, trend, jdaily}
 let todayPrices = {};
@@ -1925,21 +1938,17 @@ function rebuildAll(){
         anyData=true;
         const today=dates[dates.length-1]; if(today>latest) latest=today;
         window._latestDate=window._latestDate||{}; window._latestDate[cat]=today;
-        const td=DB[cat][today];
-        window._currentStats[cat]={
-            auction:{ daily_report:td.daily||[], market_top6:td.market||[], total_history:td.total||[] },
-            jungga:{ daily_report:td.jdaily||[], total_history:td.jtotal||[] }
-        };
-        renderDaily(cat+'-daily-container', td.daily||[]);
-        renderTop50(cat+'-top50-container', td.daily||[]);
-        renderMarketTop6(cat+'-market-container', td.market||[]);
-        renderJungga(cat+'-jungga-container', td.jdaily||[], td.jtotal||[]);
-        buildFilters(cat, td.total||[]);
-        const trend={}, dHist={}, mHist={};
-        dates.forEach(d=>{ trend[d]=DB[cat][d].trend||[]; });
-        dates.filter(d=>d!==today).forEach(d=>{ dHist[d]=DB[cat][d].daily||[]; mHist[d]=DB[cat][d].market||[]; });
+        const trend={}, dHist={};
+        dates.forEach(d=>{ trend[d]=DB[cat][d].trend||[]; dHist[d]=DB[cat][d].daily||[]; });
+        dailyHistory[cat]=dHist;            // 가격추이 상위50 라인용
         initTrendControls(cat, trend);
-        initDailyDatePicker(cat, dHist, td.daily, mHist);
+        // 달력 입력 초기화
+        const di=document.getElementById(cat+'-date');
+        if(di){ di.min=dates[0]; di.max=today; if(!di.value||di.value>di.max||di.value<di.min) di.value=today; }
+        const di2=document.getElementById(cat+'-date2');
+        if(di2){ di2.min=dates[0]; di2.max=today; if(!di2.value||di2.value>di2.max||di2.value<di2.min) di2.value=today; }
+        if(!_periodMode[cat]) _periodMode[cat]='day';
+        applyPeriod(cat);
     });
     todayPrices={};
     ['mangam','gamgyul'].forEach(cat=>{
@@ -1948,7 +1957,6 @@ function rebuildAll(){
         Object.entries(byV).forEach(([v,r])=>{ todayPrices[v]=r.평균가; });
     });
     updateTodayHint();
-    if(document.getElementById('report-sub')){ populateReportPeriods(); renderReportTab(); }
     const ut=document.getElementById('update-time');
     if(ut) ut.textContent = anyData ? `최신 ${latest||lastUpdate} 기준` : '데이터 없음';
 }
@@ -2120,23 +2128,75 @@ function populateReportPeriods(){
     if(opts.some(o=>o.v===prev)) sel.value=prev;
     else if(opts.length) sel.value=opts[opts.length-1].v;   // 최신 기본
 }
-function renderReportTab(){
-    const sel=document.getElementById('report-sub'); if(!sel) return;
-    const catSel=document.getElementById('report-cat'); const cat=catSel?catSel.value:'hobak';
-    if(!sel.options.length) populateReportPeriods();
-    generateReport(cat, _reportType, sel.value);
-}
+function renderReportTab(){ renderReportForDates('hobak', getSelectedDates('hobak')); }
 const CAT_LABEL = { hobak:'제주호박', gamgyul:'감귤', mangam:'만감류' };
 
-function generateReport(cat, type, key){
+let _periodMode = {};   // cat -> 'day'|'week'|'month'|'range'
+function _modeTxt(m){ return m==='week'?'주간':m==='month'?'월간':m==='range'?'기간':'일간'; }
+function getSelectedDates(cat){
+    const all=reportDatesAll(cat); if(!all.length) return [];
+    const mode=_periodMode[cat]||'day';
+    const inp=document.getElementById(cat+'-date');
+    const d1=(inp&&inp.value)?inp.value:all[all.length-1];
+    if(mode==='week'){ const m=mondayOf(d1); return all.filter(x=>mondayOf(x)===m); }
+    if(mode==='month'){ const mo=d1.slice(0,7); return all.filter(x=>x.slice(0,7)===mo); }
+    if(mode==='range'){ const i2=document.getElementById(cat+'-date2'); const d2=(i2&&i2.value)?i2.value:d1; const lo=d1<d2?d1:d2, hi=d1<d2?d2:d1; return all.filter(x=>x>=lo&&x<=hi); }
+    return all.includes(d1)?[d1]:[];   // 일간: 데이터 있는 날만
+}
+function combineRows(cat,dates){
+    let auc=[], jng=[];
+    dates.forEach(d=>{ const e=DB[cat]&&DB[cat][d]; if(!e) return;
+        if(e.total&&e.total.length) auc=auc.concat(e.total.map(withBoxKg));
+        if(e.jtotal&&e.jtotal.length) jng=jng.concat(e.jtotal.map(withBoxKg));
+    });
+    return {auc,jng};
+}
+function buildStat(cat,dates){
+    const {auc,jng}=combineRows(cat,dates);
+    const aucC=removeOutliers(auc), jngC=removeOutliers(jng);
+    return {
+        auction:{ daily_report:buildDaily(aucC), market_top6:buildMarket(aucC), total_history:auc },
+        jungga:{ daily_report:buildDaily(jngC), total_history:jng }
+    };
+}
+function applyPeriod(cat){
+    const dates=getSelectedDates(cat);
+    const stat=buildStat(cat,dates);
+    window._currentStats=window._currentStats||{}; window._currentStats[cat]=stat;
+    renderDaily(cat+'-daily-container', stat.auction.daily_report);
+    renderTop50(cat+'-top50-container', stat.auction.daily_report);
+    renderMarketTop6(cat+'-market-container', stat.auction.market_top6);
+    renderJungga(cat+'-jungga-container', stat.jungga.daily_report, stat.jungga.total_history);
+    buildFilters(cat, stat.auction.total_history);
+    const lab=document.getElementById(cat+'-period-label');
+    if(lab) lab.textContent = dates.length ? (dates.length>1 ? `${dates[0]} ~ ${dates[dates.length-1]} · ${dates.length}일` : dates[0]) : '해당 기간 데이터 없음';
+    renderReportForDates(cat, dates);
+    // 계산기 힌트 가격 갱신
+    if(cat==='mangam'||cat==='gamgyul'){
+        todayPrices=todayPrices||{};
+        const dr=stat.auction.daily_report||[]; const byV={};
+        dr.forEach(r=>{ const v=r.품종||r.품목; if(!byV[v]||r.총거래량>byV[v].총거래량) byV[v]=r; });
+        Object.entries(byV).forEach(([v,r])=>{ todayPrices[v]=r.평균가; });
+        updateTodayHint();
+    }
+}
+function setPeriodMode(cat,mode,btn){
+    _periodMode[cat]=mode;
+    document.querySelectorAll('#'+cat+'-period .pm-btn').forEach(b=>b.classList.remove('on'));
+    if(btn) btn.classList.add('on');
+    const r2=document.getElementById(cat+'-range2'); if(r2) r2.style.display=(mode==='range')?'inline-flex':'none';
+    applyPeriod(cat);
+}
+function renderReportForDates(cat,dates){
+    if(cat!=='hobak') return;
+    if(!document.getElementById('report-body')) return;
+    generateReport(cat, dates, _modeTxt(_periodMode[cat]||'day'));
+}
+
+function generateReport(cat, dates, periodTxt){
     const body=document.getElementById('report-body');
-    const all=reportDatesAll(cat);
-    let dates;
-    if(type==='week') dates=all.filter(d=>mondayOf(d)===key);
-    else if(type==='month') dates=all.filter(d=>d.slice(0,7)===key);
-    else dates=all.filter(d=>d===key);
-    if(!dates.length && all.length && !key) dates=all.slice(-1);
-    const periodTxt = type==='week' ? '주간' : (type==='month'?'월간':'일간');
+    if(!body) return;
+    dates=dates||[]; periodTxt=periodTxt||'일간';
     if(!dates.length){
         body.innerHTML='<div class="r-empty">데이터가 없습니다 · PC에서 엑셀을 업로드하면 리포트가 자동 생성됩니다</div>';
         return;
