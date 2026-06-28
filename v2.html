@@ -159,7 +159,74 @@
             .sim-table th,
             .sim-table td { padding:5px 4px !important; white-space:nowrap; }
         }
-    </style>
+    
+/* ===== 📑 리포트 (잡지형 다크) ===== */
+.report-controls{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.report-controls .rc-lab{font-size:12px;font-weight:700;color:#6b7280;margin-right:6px}
+.report-controls select{border:1px solid #d1d5db;border-radius:10px;padding:7px 28px 7px 12px;font-size:14px;background:#fff;font-weight:700}
+#report-period-bar{display:flex;gap:6px}
+.rp-btn{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:700;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer}
+.rp-btn.on{background:#c2410c;color:#fff;border-color:#c2410c}
+#report-root{--rbg:#16120d;--rsurf:#211a13;--rsurf2:#2c2319;--rline:#3a2f22;--ramber:#f0a830;--rambs:#ffce7a;--rteal:#3db3a0;--rred:#e0654a;--rink:#f6efe2;--rmut:#a8997f;--rdim:#7a6c57;
+  --rmono:ui-monospace,'JetBrains Mono','SF Mono',monospace;
+  background:var(--rbg);color:var(--rink);border-radius:16px;padding:22px 20px 30px;max-width:780px;margin:0 auto;overflow:hidden}
+#report-root .r-empty{color:#a8997f;text-align:center;padding:50px 10px;font-size:14px}
+#report-root .r-dim{color:var(--rdim);font-size:13px;padding:8px 0}
+#report-root .r-head{padding-bottom:16px;border-bottom:1px solid var(--rline)}
+#report-root .r-eyebrow{font-family:var(--rmono);font-size:11px;letter-spacing:.18em;color:var(--ramber);text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:9px}
+#report-root .r-dot{width:7px;height:7px;border-radius:50%;background:var(--rteal);box-shadow:0 0 0 0 rgba(61,179,160,.6);animation:rpulse 2s infinite}
+@keyframes rpulse{0%{box-shadow:0 0 0 0 rgba(61,179,160,.5)}70%{box-shadow:0 0 0 8px rgba(61,179,160,0)}100%{box-shadow:0 0 0 0 rgba(61,179,160,0)}}
+#report-root .r-h1{font-size:25px;font-weight:800;line-height:1.15;letter-spacing:-.01em}
+#report-root .r-h1 b{color:var(--ramber)}
+#report-root .r-sub{color:var(--rmut);font-size:12.5px;margin-top:7px;font-family:var(--rmono)}
+#report-root .r-hero{background:linear-gradient(150deg,var(--rsurf2),var(--rsurf));border:1px solid var(--rline);border-radius:14px;padding:20px 18px;margin-top:18px;position:relative;overflow:hidden}
+#report-root .r-hero::after{content:"";position:absolute;right:-40px;top:-40px;width:170px;height:170px;background:radial-gradient(circle,rgba(240,168,48,.16),transparent 70%)}
+#report-root .r-hero .lab{font-size:12px;color:var(--rmut)}
+#report-root .r-hero .big{font-family:var(--rmono);font-weight:700;font-size:46px;line-height:1;color:var(--rambs);margin:6px 0 2px;letter-spacing:-.02em}
+#report-root .r-hero .big span{font-size:20px;color:var(--rmut);font-weight:500}
+#report-root .r-hero .ctx{font-size:13px;color:var(--rink);margin-top:9px}
+#report-root .r-hero .ctx b{color:var(--rteal)}
+#report-root .r-hero .hrow{display:flex;gap:18px;margin-top:15px;flex-wrap:wrap}
+#report-root .r-hero .hrow div{font-size:12px;color:var(--rmut)}
+#report-root .r-hero .hrow b{display:block;font-family:var(--rmono);font-size:17px;color:var(--rink);font-weight:700;margin-top:2px}
+#report-root .r-sec{margin-top:26px}
+#report-root .r-stitle{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--rdim);margin-bottom:4px;display:flex;align-items:center;gap:10px}
+#report-root .r-stitle .no{color:var(--ramber);font-family:var(--rmono)}
+#report-root .r-sdesc{font-size:12.5px;color:var(--rmut);margin-bottom:14px}
+#report-root .r-bar{display:grid;grid-template-columns:90px 1fr 76px;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(58,47,34,.5)}
+#report-root .r-bar:last-child{border-bottom:none}
+#report-root .r-bar .mk{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#report-root .r-bar .track{height:22px;background:var(--rsurf);border-radius:6px;overflow:hidden}
+#report-root .r-bar .fl{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--ramber),var(--rambs))}
+#report-root .r-bar.lo .fl{background:linear-gradient(90deg,#8a5a3a,#b07a4a)}
+#report-root .r-bar .pr{font-family:var(--rmono);font-weight:700;font-size:14px;text-align:right;color:var(--rambs)}
+#report-root .r-bar.lo .pr{color:var(--rmut)}
+#report-root .r-bar .vol{font-size:10px;color:var(--rdim);font-family:var(--rmono);text-align:right}
+#report-root .r-tag{font-size:10px;font-family:var(--rmono);padding:1px 6px;border-radius:4px;margin-left:6px}
+#report-root .r-tag.go{background:rgba(61,179,160,.18);color:var(--rteal)}
+#report-root .r-tag.no{background:rgba(224,101,74,.16);color:var(--rred)}
+#report-root .r-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#report-root .r-card{background:var(--rsurf);border:1px solid var(--rline);border-radius:12px;padding:13px 14px}
+#report-root .r-card .sp{font-size:14px;font-weight:600}
+#report-root .r-card .kg{font-family:var(--rmono);font-size:22px;font-weight:700;color:var(--rambs);margin:5px 0 1px}
+#report-root .r-card .kg u{font-size:11px;color:var(--rmut);text-decoration:none}
+#report-root .r-card .meta{font-size:11px;color:var(--rmut);font-family:var(--rmono)}
+#report-root .strat{background:var(--rsurf);border:1px solid var(--rline);border-left:3px solid var(--ramber);border-radius:10px;padding:13px 15px;margin-bottom:10px}
+#report-root .strat h4{font-size:14px;font-weight:700;margin-bottom:5px;color:var(--rambs)}
+#report-root .strat p{font-size:13px;color:var(--rink);opacity:.92}
+#report-root .strat.warn{border-left-color:var(--rred)} #report-root .strat.warn h4{color:var(--rred)}
+#report-root .strat.go{border-left-color:var(--rteal)} #report-root .strat.go h4{color:var(--rteal)}
+#report-root .r-foot{margin-top:28px;padding-top:16px;border-top:1px solid var(--rline);font-size:11.5px;color:var(--rdim);font-family:var(--rmono);line-height:1.7}
+#report-root .r-foot .src{color:var(--rmut)}
+@media(max-width:639px){
+  #report-root{padding:16px 13px 24px}
+  #report-root .r-h1{font-size:21px}
+  #report-root .r-hero .big{font-size:38px}
+  #report-root .r-grid{grid-template-columns:1fr 1fr}
+  #report-root .r-bar{grid-template-columns:74px 1fr 64px}
+}
+
+</style>
 </head>
 <body>
 
@@ -197,6 +264,7 @@
             <button onclick="changeTab('gamgyul',this)" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍋 감귤</button>
             <button onclick="changeTab('mangam',this)" class="tab-main-btn active flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍊 만감류</button>
             <button onclick="changeTab('calc',this)" class="tab-main-btn flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🧮 수익예상계산</button>
+            <button onclick="changeTab('report',this);renderReportTab()" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">📑 리포트</button>
         </div>
     </div>
 </header>
@@ -735,6 +803,29 @@
 
         </div>
     </div>
+</div>
+
+
+<!-- ===== 📑 리포트 ===== -->
+<div id="tab-report" class="tab-content">
+  <div class="report-controls">
+    <div class="rc-left">
+      <span class="rc-lab">품목</span>
+      <select id="report-cat" onchange="renderReportTab()">
+        <option value="hobak">🎃 제주호박</option>
+        <option value="gamgyul">🍋 감귤</option>
+        <option value="mangam">🍊 만감류</option>
+      </select>
+    </div>
+    <div id="report-period-bar" class="rc-right">
+      <button class="rp-btn on" onclick="setReportPeriod(1,this)">일간</button>
+      <button class="rp-btn" onclick="setReportPeriod(7,this)">주간</button>
+      <button class="rp-btn" onclick="setReportPeriod(30,this)">월간</button>
+    </div>
+  </div>
+  <div id="report-root">
+    <div id="report-body"></div>
+  </div>
 </div>
 
 </div><!-- /max-w -->
@@ -1960,6 +2051,173 @@ window.addEventListener('DOMContentLoaded', ()=>{
     setWorkType('선과장');
     loadFromGitHub();
 });
+
+
+
+/* ============================================================
+   📑 일간·주간·월간 리포트 (잡지형)
+   ============================================================ */
+let _reportDays = 1;
+const RCOLORS = { go:'출하', no:'회피' };
+function setReportPeriod(days, btn){
+    _reportDays = days;
+    document.querySelectorAll('#report-period-bar .rp-btn').forEach(b=>b.classList.remove('on'));
+    if(btn) btn.classList.add('on');
+    renderReportTab();
+}
+function renderReportTab(){
+    const catSel=document.getElementById('report-cat');
+    if(!catSel) return;
+    generateReport(catSel.value, _reportDays);
+}
+function periodDates(cat, days){
+    const ds=Object.keys(DB[cat]||{}).filter(d=>d!=='미상').sort();
+    return days<=1 ? ds.slice(-1) : ds.slice(-days);
+}
+const CAT_LABEL = { hobak:'제주호박', gamgyul:'감귤', mangam:'만감류' };
+
+function generateReport(cat, days){
+    const body=document.getElementById('report-body');
+    const dates=periodDates(cat,days);
+    const periodTxt = days<=1 ? '일간' : (days<=7?'주간(최근 7일)':'월간(최근 30일)');
+    if(!dates.length){
+        body.innerHTML='<div class="r-empty">데이터가 없습니다 · PC에서 엑셀을 업로드하면 리포트가 자동 생성됩니다</div>';
+        return;
+    }
+    // ── 집계 ──
+    const specA={}, varA={}, mkt={};
+    let totVol=0, totVal=0, gMax=0, gMin=1e12;
+    dates.forEach(d=>{
+        (DB[cat][d].daily||[]).forEach(r=>{
+            const kg=boxKgOf(r.규격)||0;
+            const s=specA[r.규격]=specA[r.규격]||{pv:0,vol:0,wt:0,max:0,min:1e12,kg};
+            s.pv+=r.평균가*r.총거래량; s.vol+=r.총거래량; s.wt+=(r.총중량||0); s.max=Math.max(s.max,r.최고가); s.min=Math.min(s.min,r.최저가);
+            const v=varA[r.품종]=varA[r.품종]||{pv:0,vol:0,max:0,min:1e12,kgpv:0};
+            v.pv+=r.평균가*r.총거래량; v.vol+=r.총거래량; v.max=Math.max(v.max,r.최고가); v.min=Math.min(v.min,r.최저가);
+            if(kg>0) v.kgpv+=(r.평균가/kg)*r.총거래량;
+            totVol+=r.총거래량; totVal+=r.평균가*r.총거래량;
+            gMax=Math.max(gMax,r.최고가); gMin=Math.min(gMin,r.최저가);
+        });
+    });
+    const specEntries=Object.entries(specA).filter(([k,v])=>v.vol>0);
+    if(!specEntries.length){ body.innerHTML='<div class="r-empty">경매 데이터가 없습니다</div>'; return; }
+    // 주력 규격 = 거래량 최다
+    const mainSpec=specEntries.slice().sort((a,b)=>(b[1].wt-a[1].wt)||(b[1].vol-a[1].vol))[0];
+    const msName=mainSpec[0], ms=mainSpec[1];
+    const msPrice=Math.round(ms.pv/ms.vol);
+    const msKg=ms.kg>0?Math.round(msPrice/ms.kg):0;
+    // 주력 규격 시장
+    dates.forEach(d=>{
+        (DB[cat][d].market||[]).forEach(g=>{
+            if(g.규격!==msName) return;
+            (g.시장목록||[]).forEach(m=>{
+                const x=mkt[m.시장명]=mkt[m.시장명]||{pv:0,vol:0};
+                x.pv+=m.평균가*m.거래량; x.vol+=m.거래량;
+            });
+        });
+    });
+    let markets=Object.entries(mkt).map(([mk,o])=>({mk, pr:Math.round(o.pv/o.vol), vol:o.vol}))
+        .filter(m=>m.vol>0).sort((a,b)=>b.pr-a.pr);
+    // 출하/회피 태그: 상위 = 거래량 받쳐주는 곳 중심, 하위 회피
+    const topCut = markets.length>3 ? markets[Math.min(2,markets.length-1)].pr : (markets[0]?markets[0].pr:0);
+    const loCut  = markets.length>3 ? markets[markets.length-2].pr : -1;
+    markets.forEach(m=>{ m.go = m.pr>=topCut; m.no = m.pr<=loCut; });
+
+    // kg단가 규격 정렬(작은 규격 먼저)
+    const specSorted=specEntries.map(([k,v])=>({sp:k, kg:v.kg>0?Math.round((v.pv/v.vol)/v.kg):0, vol:v.vol, box:Math.round(v.pv/v.vol)}))
+        .sort((a,b)=>a.kg && b.kg ? (boxKgOf(a.sp)-boxKgOf(b.sp)) : b.kg-a.kg);
+    const varSorted=Object.entries(varA).map(([k,v])=>({sp:k, kg:Math.round(v.kgpv/v.vol), vol:v.vol, min:v.min, max:v.max}))
+        .sort((a,b)=>b.kg-a.kg);
+
+    // ── 출하 판단 텍스트 ──
+    const goList=markets.filter(m=>m.go).slice(0,3);
+    const noList=markets.filter(m=>m.no).slice(0,2);
+    const smallSpec=specSorted[0], bigSpec=specSorted[specSorted.length-1];
+    const topVar=varSorted[0], lowVar=varSorted[varSorted.length-1];
+    let strat='';
+    if(goList.length){
+        strat+=`<div class="strat go"><h4>↗ 단가 우위 — ${goList.map(m=>m.mk).join(' · ')}</h4>
+            <p>${CAT_LABEL[cat]} ${msName} 기준 상위 시장. ${goList[0].mk} ${fmt(goList[0].pr)}원(${fmt(goList[0].vol)}박스) 등 단가가 높고 물량 소화력이 좋아 출하 1순위.</p></div>`;
+    }
+    if(noList.length){
+        strat+=`<div class="strat warn"><h4>↘ 회피 — ${noList.map(m=>m.mk).join(' · ')}</h4>
+            <p>${noList.map(m=>m.mk+' '+fmt(m.pr)+'원').join(', ')} 수준으로 메인 시장 대비 낮음. 운임 고려 시 마진 잠식, 분산 출하 시 비중 최소화.</p></div>`;
+    }
+    if(smallSpec && bigSpec && smallSpec.sp!==bigSpec.sp && smallSpec.kg && bigSpec.kg){
+        strat+=`<div class="strat"><h4>⚑ 규격 전략</h4>
+            <p>${smallSpec.sp} kg당 ${fmt(smallSpec.kg)}원 vs ${bigSpec.sp} ${fmt(bigSpec.kg)}원. 소포장일수록 kg 환산 단가가 높다. 선별·포장 여력이 되면 소포장 비중을 높이는 쪽이 총수익에 유리.</p></div>`;
+    }
+    if(topVar && lowVar && topVar.sp!==lowVar.sp){
+        strat+=`<div class="strat"><h4>⚑ 품종 전략</h4>
+            <p>${topVar.sp}이 ${lowVar.sp}보다 kg당 ${fmt(Math.max(0,topVar.kg-lowVar.kg))}원 높게 거래. 품종 표기·선별로 프리미엄 라인을 분리하면 단가 방어에 유리.</p></div>`;
+    }
+
+    // ── 막대 렌더 ──
+    const mx=markets.length?markets[0].pr:1, mn=markets.length?Math.min(...markets.map(m=>m.pr))*0.9:0;
+    const barsHtml=markets.slice(0,10).map(m=>{
+        const w=Math.max(8, Math.round((m.pr-mn)/((mx-mn)||1)*92)+8);
+        const tag=m.go?'<span class="r-tag go">출하</span>':m.no?'<span class="r-tag no">회피</span>':'';
+        return `<div class="r-bar ${m.no?'lo':''}">
+            <div class="mk">${m.mk}${tag}</div>
+            <div class="track"><div class="fl" style="width:${w}%"></div></div>
+            <div><div class="pr">${fmt(m.pr)}</div><div class="vol">${fmt(m.vol)}박스</div></div>
+        </div>`;
+    }).join('') || '<div class="r-dim">시장 데이터 없음</div>';
+
+    const specHtml=specSorted.map(s=>`<div class="r-card">
+        <div class="sp">${s.sp}</div>
+        <div class="kg">${s.kg?fmt(s.kg):'-'}<u> 원/kg</u></div>
+        <div class="meta">박스 ${fmt(s.box)}원 · ${fmt(s.vol)}박스</div></div>`).join('');
+
+    const varHtml=varSorted.map((v,i)=>`<div class="r-card" ${i===0?'style="border-color:rgba(240,168,48,.4)"':''}>
+        <div class="sp">${v.sp}</div>
+        <div class="kg">${fmt(v.kg)}<u> 원/kg</u></div>
+        <div class="meta">${fmt(v.vol)}박스 · 범위 ${fmt(v.min)}~${fmt(v.max)}</div></div>`).join('');
+
+    const dateRange = dates.length>1 ? `${dates[0]} ~ ${dates[dates.length-1]} (${dates.length}일)` : dates[0];
+    const cnt = dates.length>1?`${dates.length}일 누적`:'당일';
+
+    body.innerHTML=`
+    <header class="r-head">
+      <div class="r-eyebrow"><span class="r-dot"></span>제주 특산물 공판 데이터센터 · ${periodTxt}</div>
+      <h1 class="r-h1">${CAT_LABEL[cat]} <b>경락가</b> 분석</h1>
+      <div class="r-sub">${dateRange} · 주력규격 ${msName}</div>
+    </header>
+    <div class="r-hero">
+      <div class="lab">${CAT_LABEL[cat]} · ${msName} 기준시세 (거래량 가중평균)</div>
+      <div class="big">${fmt(msPrice)}<span> 원/박스</span></div>
+      <div class="ctx">kg당 <b>${fmt(msKg)}원</b> · 범위 ${fmt(ms.min)}~${fmt(ms.max)}원 · ${fmt(ms.vol)}박스</div>
+      <div class="hrow">
+        <div>총 거래량<b>${fmt(totVol)}</b></div>
+        <div>전체 평균<b>${fmt(Math.round(totVal/totVol))}원</b></div>
+        <div>집계 기준<b>${cnt}</b></div>
+      </div>
+    </div>
+    <section class="r-sec">
+      <div class="r-stitle"><span class="no">01</span>${msName} · 시장별 경락가</div>
+      <div class="r-sdesc">출하처 선택용 · 거래량 가중평균. 상위 시장이 출하 1순위.</div>
+      ${barsHtml}
+    </section>
+    <section class="r-sec">
+      <div class="r-stitle"><span class="no">02</span>규격별 kg당 단가</div>
+      <div class="r-sdesc">소포장일수록 kg당 단가가 높다. 선별·포장 여력이 되면 소포장이 유리.</div>
+      <div class="r-grid">${specHtml}</div>
+    </section>
+    <section class="r-sec">
+      <div class="r-stitle"><span class="no">03</span>품종 비교</div>
+      <div class="r-sdesc">품종별 kg당 단가. 표기·선별 전략 참고.</div>
+      <div class="r-grid">${varHtml}</div>
+    </section>
+    <section class="r-sec">
+      <div class="r-stitle"><span class="no">04</span>출하 판단</div>
+      ${strat||'<div class="r-dim">분석할 데이터가 부족합니다</div>'}
+    </section>
+    <footer class="r-foot">
+      <span class="src">데이터 출처</span> aT 농산물유통정보 실시간 경매현황 · ${dateRange}<br>
+      분석대상 ${CAT_LABEL[cat]}(원산지 제주) 경매 · kg당 단가는 규격 환산값<br>
+      ※ 경락가는 수수료·공제 차감 전 금액. 실수령은 수익예상계산 탭 참고.
+    </footer>`;
+}
 
 </script>
 </body>
