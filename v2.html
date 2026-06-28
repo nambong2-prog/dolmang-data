@@ -1764,13 +1764,13 @@ function serialize(){
     CATS.forEach(cat=>{
         out.cats[cat]={ days:{} };
         const dates=Object.keys(DB[cat]).filter(d=>d!=='미상').sort();
-        const recent=new Set(dates.slice(-RECENT_DAYS));
         dates.forEach(d=>{
             const e=DB[cat][d];
-            if(e.archived || !recent.has(d)){
-                out.cats[cat].days[d]={ archived:true, daily:e.daily||[], market:e.market||[], trend:e.trend||[] };
-            } else {
+            // 압축 없이 원본(전건) 그대로 보관. 단, 과거에 이미 요약만 남은 날짜는 요약 유지
+            if((e.total&&e.total.length) || (e.jtotal&&e.jtotal.length) || !e.archived){
                 out.cats[cat].days[d]={ total:e.total||[], jtotal:e.jtotal||[] };
+            } else {
+                out.cats[cat].days[d]={ archived:true, daily:e.daily||[], market:e.market||[], trend:e.trend||[] };
             }
         });
     });
