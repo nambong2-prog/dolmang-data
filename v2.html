@@ -1708,12 +1708,36 @@ function buildMarket(rows){
 }
 const toTrend = daily => daily.map(r=>({ 품종:r.품종, 규격:r.규격, 평균가:r.평균가, 총거래량:r.총거래량 }));
 
+// ── 이상치 자동 제외 (집계 전용) ──
+const OUT_PRICE_LO=0.3, OUT_PRICE_HI=3.5, OUT_VOL_FLOOR=400, OUT_VOL_FACTOR=40;
+function _median(arr){ if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const n=s.length; return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2; }
+function removeOutliers(rows){
+    if(rows.length<4) return rows;
+    const volByV={};
+    rows.forEach(r=>{ const v=r.품종||r.품목; (volByV[v]=volByV[v]||[]).push(r.거래량); });
+    const volCut={};
+    Object.entries(volByV).forEach(([v,a])=>{ volCut[v]=Math.max(OUT_VOL_FLOOR, _median(a)*OUT_VOL_FACTOR); });
+    const priceByG={};
+    rows.forEach(r=>{ const k=(r.품종||r.품목)+'|'+r.규격; (priceByG[k]=priceByG[k]||[]).push(r.경락가); });
+    const med={};
+    Object.entries(priceByG).forEach(([k,a])=>{ med[k]=_median(a); });
+    return rows.filter(r=>{
+        const v=r.품종||r.품목;
+        if(r.거래량 > volCut[v]) return false;
+        const k=v+'|'+r.규격, m=med[k], grp=priceByG[k];
+        if(m>0 && grp.length>=4 && (r.경락가<m*OUT_PRICE_LO || r.경락가>m*OUT_PRICE_HI)) return false;
+        return true;
+    });
+}
+
 function deriveDate(e){
     if(e.archived) return e;
     const auc=(e.total||[]).map(withBoxKg);
     const jng=(e.jtotal||[]).map(withBoxKg);
-    e.daily=buildDaily(auc); e.market=buildMarket(auc);
-    e.jdaily=buildDaily(jng); e.trend=toTrend(e.daily);
+    const aucC=removeOutliers(auc), jngC=removeOutliers(jng);
+    e.daily=buildDaily(aucC); e.market=buildMarket(aucC);
+    e.jdaily=buildDaily(jngC); e.trend=toTrend(e.daily);
+    e.outliers=auc.length-aucC.length;
     return e;
 }
 
