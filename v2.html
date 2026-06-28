@@ -264,7 +264,7 @@
             <button onclick="changeTab('gamgyul',this)" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍋 감귤</button>
             <button onclick="changeTab('mangam',this)" class="tab-main-btn active flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍊 만감류</button>
             <button onclick="changeTab('calc',this)" class="tab-main-btn flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🧮 수익예상계산</button>
-            <button onclick="changeTab('report',this);renderReportTab()" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">📑 리포트</button>
+            <button onclick="changeTab('report',this);populateReportPeriods();renderReportTab()" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">📑 리포트</button>
         </div>
     </div>
 </header>
@@ -811,16 +811,18 @@
   <div class="report-controls">
     <div class="rc-left">
       <span class="rc-lab">품목</span>
-      <select id="report-cat" onchange="renderReportTab()">
+      <select id="report-cat" onchange="populateReportPeriods();renderReportTab()">
         <option value="hobak">🎃 제주호박</option>
         <option value="gamgyul">🍋 감귤</option>
         <option value="mangam">🍊 만감류</option>
       </select>
+      <span class="rc-lab" style="margin-left:12px">기간</span>
+      <select id="report-sub" onchange="renderReportTab()"></select>
     </div>
     <div id="report-period-bar" class="rc-right">
-      <button class="rp-btn on" onclick="setReportPeriod(1,this)">일간</button>
-      <button class="rp-btn" onclick="setReportPeriod(7,this)">주간</button>
-      <button class="rp-btn" onclick="setReportPeriod(30,this)">월간</button>
+      <button class="rp-btn on" onclick="setReportType('day',this)">일간</button>
+      <button class="rp-btn" onclick="setReportType('week',this)">주간</button>
+      <button class="rp-btn" onclick="setReportType('month',this)">월간</button>
     </div>
   </div>
   <div id="report-root">
@@ -1943,6 +1945,7 @@ function rebuildAll(){
         Object.entries(byV).forEach(([v,r])=>{ todayPrices[v]=r.평균가; });
     });
     updateTodayHint();
+    if(document.getElementById('report-sub')){ populateReportPeriods(); renderReportTab(); }
     const ut=document.getElementById('update-time');
     if(ut) ut.textContent = anyData ? `최신 ${latest||lastUpdate} 기준` : '데이터 없음';
 }
@@ -2081,29 +2084,54 @@ window.addEventListener('DOMContentLoaded', ()=>{
 /* ============================================================
    📑 일간·주간·월간 리포트 (잡지형)
    ============================================================ */
-let _reportDays = 1;
-const RCOLORS = { go:'출하', no:'회피' };
-function setReportPeriod(days, btn){
-    _reportDays = days;
+let _reportType = 'day';   // 'day' | 'week' | 'month'
+function reportDatesAll(cat){ return Object.keys(DB[cat]||{}).filter(d=>d!=='미상').sort(); }
+function mondayOf(ds){ const dt=new Date(ds+'T00:00:00'); const wd=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-wd); return dt.toISOString().slice(0,10); }
+function addDays(ds,n){ const dt=new Date(ds+'T00:00:00'); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); }
+function mmdd(ds){ return ds.slice(5).replace('-','/'); }
+function setReportType(type, btn){
+    _reportType = type;
     document.querySelectorAll('#report-period-bar .rp-btn').forEach(b=>b.classList.remove('on'));
     if(btn) btn.classList.add('on');
+    populateReportPeriods();
     renderReportTab();
 }
-function renderReportTab(){
-    const catSel=document.getElementById('report-cat');
-    if(!catSel) return;
-    generateReport(catSel.value, _reportDays);
+function populateReportPeriods(){
+    const catSel=document.getElementById('report-cat'); const sel=document.getElementById('report-sub');
+    if(!catSel||!sel) return;
+    const dates=reportDatesAll(catSel.value);
+    let opts=[];
+    if(_reportType==='week'){
+        const seen={}; dates.forEach(d=>{ seen[mondayOf(d)]=true; });
+        opts=Object.keys(seen).sort().map(m=>({v:m,l:`${mmdd(m)}~${mmdd(addDays(m,6))} 주`}));
+    } else if(_reportType==='month'){
+        const seen={}; dates.forEach(d=>{ seen[d.slice(0,7)]=true; });
+        opts=Object.keys(seen).sort().map(m=>({v:m,l:`${m.slice(0,4)}년 ${parseInt(m.slice(5,7))}월`}));
+    } else {
+        opts=dates.map(d=>({v:d,l:d}));
+    }
+    const prev=sel.value;
+    sel.innerHTML=opts.map(o=>`<option value="${o.v}">${o.l}</option>`).join('');
+    if(opts.some(o=>o.v===prev)) sel.value=prev;
+    else if(opts.length) sel.value=opts[opts.length-1].v;   // 최신 기본
 }
-function periodDates(cat, days){
-    const ds=Object.keys(DB[cat]||{}).filter(d=>d!=='미상').sort();
-    return days<=1 ? ds.slice(-1) : ds.slice(-days);
+function renderReportTab(){
+    const catSel=document.getElementById('report-cat'); const sel=document.getElementById('report-sub');
+    if(!catSel||!sel) return;
+    if(!sel.options.length) populateReportPeriods();
+    generateReport(catSel.value, _reportType, sel.value);
 }
 const CAT_LABEL = { hobak:'제주호박', gamgyul:'감귤', mangam:'만감류' };
 
-function generateReport(cat, days){
+function generateReport(cat, type, key){
     const body=document.getElementById('report-body');
-    const dates=periodDates(cat,days);
-    const periodTxt = days<=1 ? '일간' : (days<=7?'주간(최근 7일)':'월간(최근 30일)');
+    const all=reportDatesAll(cat);
+    let dates;
+    if(type==='week') dates=all.filter(d=>mondayOf(d)===key);
+    else if(type==='month') dates=all.filter(d=>d.slice(0,7)===key);
+    else dates=all.filter(d=>d===key);
+    if(!dates.length && all.length && !key) dates=all.slice(-1);
+    const periodTxt = type==='week' ? '주간' : (type==='month'?'월간':'일간');
     if(!dates.length){
         body.innerHTML='<div class="r-empty">데이터가 없습니다 · PC에서 엑셀을 업로드하면 리포트가 자동 생성됩니다</div>';
         return;
