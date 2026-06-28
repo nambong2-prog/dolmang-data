@@ -2086,8 +2086,9 @@ window.addEventListener('DOMContentLoaded', ()=>{
    ============================================================ */
 let _reportType = 'day';   // 'day' | 'week' | 'month'
 function reportDatesAll(cat){ return Object.keys(DB[cat]||{}).filter(d=>d!=='미상').sort(); }
-function mondayOf(ds){ const dt=new Date(ds+'T00:00:00'); const wd=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-wd); return dt.toISOString().slice(0,10); }
-function addDays(ds,n){ const dt=new Date(ds+'T00:00:00'); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); }
+function _fmtDate(dt){ const y=dt.getFullYear(), m=String(dt.getMonth()+1).padStart(2,'0'), d=String(dt.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; }
+function mondayOf(ds){ const dt=new Date(ds+'T00:00:00'); const wd=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-wd); return _fmtDate(dt); }
+function addDays(ds,n){ const dt=new Date(ds+'T00:00:00'); dt.setDate(dt.getDate()+n); return _fmtDate(dt); }
 function mmdd(ds){ return ds.slice(5).replace('-','/'); }
 function setReportType(type, btn){
     _reportType = type;
