@@ -244,6 +244,15 @@
                 <div class="inline-flex items-center gap-1 bg-green-50 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold border border-green-200">
                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>실시간
                 </div>
+                <button onclick="toggleUpload()" id="upload-btn"
+                    title="엑셀 업로드"
+                    style="width:32px;height:32px;border-radius:50%;border:1.5px solid #fdba74;background:#fff7ed;
+                           display:flex;align-items:center;justify-content:center;cursor:pointer;
+                           transition:all 0.2s;font-size:15px;"
+                    onmouseover="this.style.background='#fed7aa'"
+                    onmouseout="this.style.background='#fff7ed'">
+                    📁
+                </button>
                 <button onclick="manualRefresh()" id="refresh-btn"
                     title="새로고침"
                     style="width:32px;height:32px;border-radius:50%;border:1.5px solid #fdba74;background:#fff7ed;
@@ -264,20 +273,20 @@
             <button onclick="changeTab('gamgyul',this)" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍋 감귤</button>
             <button onclick="changeTab('mangam',this)" class="tab-main-btn active flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🍊 만감류</button>
             <button onclick="changeTab('calc',this)" class="tab-main-btn flex-1 min-w-[70px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">🧮 수익예상계산</button>
-            <button onclick="changeTab('report',this);populateReportPeriods();renderReportTab()" class="tab-main-btn flex-1 min-w-[60px] py-3 text-xs font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">📑 리포트</button>
         </div>
     </div>
 </header>
 
 <div class="max-w-7xl mx-auto px-3 py-4">
 <!-- ===== 엑셀 업로드 + 깃허브 저장 ===== -->
-<div id="upload-card" class="card mb-4">
+<div id="upload-card" class="card mb-4" style="display:none">
     <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
         <h2 class="font-bold text-gray-800 text-sm">📁 경매 엑셀 업로드 <span class="text-xs text-gray-400 font-normal ml-1">실시간 경매현황 .xls/.xlsx · 여러 개 동시 가능</span></h2>
         <div class="flex items-center gap-2">
             <span id="gh-token-state" class="text-xs"></span>
             <button onclick="toggleSettings()" class="text-xs text-gray-500 font-bold px-2 py-1 rounded-lg border border-gray-200">⚙️ 저장설정</button>
             <button onclick="clearAllData()" class="text-xs text-red-400 font-bold px-2 py-1 rounded-lg border border-red-200">화면비우기</button>
+            <button onclick="toggleUpload()" class="text-xs text-gray-500 font-bold px-2 py-1 rounded-lg border border-gray-200">✕ 닫기</button>
         </div>
     </div>
     <!-- 저장설정(토큰) 패널 -->
@@ -483,14 +492,29 @@
         <span id="hobak-date-badge" class="text-xs text-orange-500 font-bold hidden">과거 데이터</span>
     </div>
     <div class="sub-tab-bar mb-3 px-1">
-        <button onclick="changeSubTab('hobak','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
+        <button onclick="changeSubTab('hobak','report',this);renderReportTab()" class="sub-btn bg-orange-500 text-white">📑 리포트</button>
+        <button onclick="changeSubTab('hobak','daily',this)" class="sub-btn bg-gray-100 text-gray-600">📊 일일리포트</button>
         <button onclick="changeSubTab('hobak','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
         <button onclick="changeSubTab('hobak','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
         <button onclick="changeSubTab('hobak','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
         <button onclick="changeSubTab('hobak','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
         <button onclick="changeSubTab('hobak','total',this)" class="sub-btn bg-gray-100 text-gray-600">📋 전체내역</button>
     </div>
-    <div id="hobak-daily" class="sub-tab-content active">
+    <div id="hobak-report" class="sub-tab-content active">
+      <div class="report-controls">
+        <div class="rc-left">
+          <span class="rc-lab">기간</span>
+          <select id="report-sub" onchange="renderReportTab()"></select>
+        </div>
+        <div id="report-period-bar" class="rc-right">
+          <button class="rp-btn on" onclick="setReportType('day',this)">일간</button>
+          <button class="rp-btn" onclick="setReportType('week',this)">주간</button>
+          <button class="rp-btn" onclick="setReportType('month',this)">월간</button>
+        </div>
+      </div>
+      <div id="report-root"><div id="report-body"></div></div>
+    </div>
+    <div id="hobak-daily" class="sub-tab-content">
         <div class="card">
             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
                 <h2 class="font-bold text-gray-800 text-sm">📊 제주호박 일일 리포트 <span class="text-xs text-orange-500 font-normal">원산지 제주만 · 품종별 카드</span></h2>
@@ -806,29 +830,6 @@
 </div>
 
 
-<!-- ===== 📑 리포트 ===== -->
-<div id="tab-report" class="tab-content">
-  <div class="report-controls">
-    <div class="rc-left">
-      <span class="rc-lab">품목</span>
-      <select id="report-cat" onchange="populateReportPeriods();renderReportTab()">
-        <option value="hobak">🎃 제주호박</option>
-        <option value="gamgyul">🍋 감귤</option>
-        <option value="mangam">🍊 만감류</option>
-      </select>
-      <span class="rc-lab" style="margin-left:12px">기간</span>
-      <select id="report-sub" onchange="renderReportTab()"></select>
-    </div>
-    <div id="report-period-bar" class="rc-right">
-      <button class="rp-btn on" onclick="setReportType('day',this)">일간</button>
-      <button class="rp-btn" onclick="setReportType('week',this)">주간</button>
-      <button class="rp-btn" onclick="setReportType('month',this)">월간</button>
-    </div>
-  </div>
-  <div id="report-root">
-    <div id="report-body"></div>
-  </div>
-</div>
 
 </div><!-- /max-w -->
 
@@ -1952,6 +1953,7 @@ function rebuildAll(){
     if(ut) ut.textContent = anyData ? `최신 ${latest||lastUpdate} 기준` : '데이터 없음';
 }
 function manualRefresh(){ loadFromGitHub(); }
+function toggleUpload(){ const c=document.getElementById('upload-card'); if(!c) return; const open=c.style.display!=="none"; c.style.display=open?"none":"block"; if(!open) c.scrollIntoView({behavior:"smooth",block:"center"}); }
 
 /* ============================================================
    수익예상계산기
@@ -2100,9 +2102,9 @@ function setReportType(type, btn){
     renderReportTab();
 }
 function populateReportPeriods(){
-    const catSel=document.getElementById('report-cat'); const sel=document.getElementById('report-sub');
-    if(!catSel||!sel) return;
-    const dates=reportDatesAll(catSel.value);
+    const sel=document.getElementById('report-sub'); if(!sel) return;
+    const catSel=document.getElementById('report-cat'); const cat=catSel?catSel.value:'hobak';
+    const dates=reportDatesAll(cat);
     let opts=[];
     if(_reportType==='week'){
         const seen={}; dates.forEach(d=>{ seen[mondayOf(d)]=true; });
@@ -2119,10 +2121,10 @@ function populateReportPeriods(){
     else if(opts.length) sel.value=opts[opts.length-1].v;   // 최신 기본
 }
 function renderReportTab(){
-    const catSel=document.getElementById('report-cat'); const sel=document.getElementById('report-sub');
-    if(!catSel||!sel) return;
+    const sel=document.getElementById('report-sub'); if(!sel) return;
+    const catSel=document.getElementById('report-cat'); const cat=catSel?catSel.value:'hobak';
     if(!sel.options.length) populateReportPeriods();
-    generateReport(catSel.value, _reportType, sel.value);
+    generateReport(cat, _reportType, sel.value);
 }
 const CAT_LABEL = { hobak:'제주호박', gamgyul:'감귤', mangam:'만감류' };
 
