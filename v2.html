@@ -1375,7 +1375,8 @@ function renderDateBar(cat){
     if(!dates.length){ bar.innerHTML = ''; return; }
 
     const selected = dailySelected[cat] || 'today';
-    let optHtml = `<option value="today" ${selected==='today'?'selected':''}>오늘</option>`;
+    const _td=(window._latestDate&&window._latestDate[cat])?window._latestDate[cat].slice(5).replace('-','/'):'';
+    let optHtml = `<option value="today" ${selected==='today'?'selected':''}>오늘 ${_td?('('+_td+')'):''}</option>`;
     dates.forEach(d => {
         const label = d.replace(/^\d{4}-/, '');
         optHtml += `<option value="${d}" ${selected===d?'selected':''}>${label}</option>`;
@@ -1922,6 +1923,7 @@ function rebuildAll(){
         }
         anyData=true;
         const today=dates[dates.length-1]; if(today>latest) latest=today;
+        window._latestDate=window._latestDate||{}; window._latestDate[cat]=today;
         const td=DB[cat][today];
         window._currentStats[cat]={
             auction:{ daily_report:td.daily||[], market_top6:td.market||[], total_history:td.total||[] },
