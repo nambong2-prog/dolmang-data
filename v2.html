@@ -202,19 +202,32 @@
 </header>
 
 <div class="max-w-7xl mx-auto px-3 py-4">
-<!-- ===== 엑셀 업로드 ===== -->
+<!-- ===== 엑셀 업로드 + 깃허브 저장 ===== -->
 <div id="upload-card" class="card mb-4">
     <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-        <h2 class="font-bold text-gray-800 text-sm">📁 경매 엑셀 업로드 <span class="text-xs text-gray-400 font-normal ml-1">실시간 경매현황 .xls/.xlsx · 여러 개 동시 가능</span></h2>
+        <h2 class="font-bold text-gray-800 text-sm">\U0001F4C1 경매 엑셀 업로드 <span class="text-xs text-gray-400 font-normal ml-1">실시간 경매현황 .xls/.xlsx · 여러 개 동시 가능</span></h2>
         <div class="flex items-center gap-2">
-            <button onclick="clearAllData()" class="text-xs text-red-400 font-bold px-2 py-1 rounded-lg border border-red-200">전체 초기화</button>
+            <span id="gh-token-state" class="text-xs"></span>
+            <button onclick="toggleSettings()" class="text-xs text-gray-500 font-bold px-2 py-1 rounded-lg border border-gray-200">⚙️ 저장설정</button>
+            <button onclick="clearAllData()" class="text-xs text-red-400 font-bold px-2 py-1 rounded-lg border border-red-200">화면비우기</button>
+        </div>
+    </div>
+    <!-- 저장설정(토큰) 패널 -->
+    <div id="gh-settings-panel" class="px-4 py-3 border-b border-gray-100 bg-gray-50" style="display:none">
+        <p class="text-xs text-gray-600 font-bold mb-1">\U0001F511 깃허브 저장 토큰 (이 기기에만 저장됨)</p>
+        <p class="text-xs text-gray-400 mb-2 leading-relaxed">업로드한 데이터를 깃허브에 자동 저장해 <b>모바일·다른 PC에서도 동일하게</b> 보이게 합니다. 토큰은 깃허브에서 발급하세요:
+            GitHub → Settings → Developer settings → <b>Fine-grained tokens</b> → 저장소 <b>dolmang-data</b>, 권한 <b>Contents: Read and write</b>.</p>
+        <div class="flex flex-wrap items-center gap-2">
+            <input id="gh-token-input" type="password" placeholder="github_pat_..." class="flex-1 min-w-[200px] border border-gray-300 rounded-lg px-3 py-2 text-sm" style="font-size:16px">
+            <button onclick="saveTokenUI()" class="text-xs text-white bg-orange-500 font-bold px-3 py-2 rounded-lg">저장</button>
+            <button onclick="removeTokenUI()" class="text-xs text-gray-500 font-bold px-3 py-2 rounded-lg border border-gray-200">삭제</button>
         </div>
     </div>
     <div class="p-4">
         <label id="drop-zone" for="file-input" style="display:block;border:2px dashed #fdba74;border-radius:12px;padding:22px;text-align:center;color:#9ca3af;background:#fffaf5;cursor:pointer;">
-            <div style="font-size:26px">📥</div>
+            <div style="font-size:26px">\U0001F4E5</div>
             <div class="text-sm font-bold text-orange-600 mt-1">엑셀 파일을 끌어다 놓거나 클릭해서 선택</div>
-            <div class="text-xs text-gray-400 mt-1">품목·품종을 자동 인식해 제주호박/감귤/만감류로 분류합니다</div>
+            <div class="text-xs text-gray-400 mt-1">품목·품종을 자동 인식해 제주호박/감귤/만감류로 분류 · 깃허브에 저장</div>
         </label>
         <input id="file-input" type="file" accept=".xls,.xlsx" multiple style="display:none" onchange="handleFiles(this.files)">
         <div id="upload-log" class="mt-3 text-xs text-gray-500 space-y-1"></div>
@@ -1515,22 +1528,27 @@ function drawVolChart(cat, days){
 }
 
 /* ============================================================
-   ▼▼▼  여기부터 신규: 엑셀 적재 · 집계 · 분류 · 계산기 · 초기화  ▼▼▼
+   ▼▼▼ 신규: 깃허브 저장 기반 데이터센터 (크로스 디바이스) ▼▼▼
    ============================================================ */
 
 const CATS = ['hobak','gamgyul','mangam'];
-// 품종 키워드 → 카테고리 라우팅 (확장 지점)
 const MANGAM_KW = ['천혜향','한라봉','레드향','황금향','카라향','진지향','천백향'];
 const GAMGYUL_KW = ['감귤','노지','하우스감귤','타이벡'];
-// 제주만 표시할 카테고리
 const JEJU_ONLY = { hobak:true, gamgyul:false, mangam:false };
 
-let todayPrices = {};   // 계산기 힌트용 (품종→평균가)
+// ── 깃허브 저장소 설정 (수정 지점) ──
+const GH = { owner:'nambong2-prog', repo:'dolmang-data', branch:'main', path:'v2-data.json' };
+const TOKEN_KEY = 'dolmang_gh_token';
+const RECENT_DAYS = 21;          // 최근 N일은 상세(전체내역/정가수의 포함), 그 이전은 요약만 저장
+
+let DB = { hobak:{}, gamgyul:{}, mangam:{} };   // DB[cat][date] = {archived, total[], jtotal[], daily, market, trend, jdaily}
+let todayPrices = {};
 let lastUpdate = '';
 
 const N = v => { if(v==null||v==='') return 0; const n=parseFloat(String(v).replace(/[, ]/g,'')); return isNaN(n)?0:n; };
 const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
 function boxKgOf(spec){ const m=String(spec||'').match(/[\d.]+/); return m?parseFloat(m[0]):0; }
+function withBoxKg(r){ return Object.assign({}, r, {boxKg:boxKgOf(r.규격)}); }
 
 function categoryOf(row){
     const pum=(row.품목||'')+'', jong=(row.품종||'')+'', origin=(row.원산지||'')+'';
@@ -1540,20 +1558,24 @@ function categoryOf(row){
     return null;
 }
 
-/* ---------- localStorage 저장소 ---------- */
-const STORE_KEY = 'dolmang_dc_v1';
-function loadStore(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY))||{}; }catch(e){ return {}; } }
-function saveStore(s){
-    try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
-    catch(e){
-        // 용량 초과 → 오래된 날짜의 원본행(rows)만 제거하고 재시도
-        const dates=[];
-        CATS.forEach(c=>{ Object.keys(s[c]||{}).forEach(d=>dates.push(d)); });
-        [...new Set(dates)].sort().slice(0, Math.ceil(dates.length/3)).forEach(d=>{
-            CATS.forEach(c=>{ if(s[c]&&s[c][d]) delete s[c][d].rows; });
-        });
-        try{ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }catch(e2){ alert('저장 공간이 부족합니다. 일부 과거 원본데이터가 정리됩니다.'); }
-    }
+/* ---------- 토큰 ---------- */
+const getToken = () => localStorage.getItem(TOKEN_KEY) || '';
+function saveTokenUI(){
+    const v=(document.getElementById('gh-token-input').value||'').trim();
+    if(v){ localStorage.setItem(TOKEN_KEY, v); }
+    else { localStorage.removeItem(TOKEN_KEY); }
+    renderTokenState();
+}
+function removeTokenUI(){ localStorage.removeItem(TOKEN_KEY); document.getElementById('gh-token-input').value=''; renderTokenState(); }
+function renderTokenState(){
+    const el=document.getElementById('gh-token-state'); if(!el) return;
+    el.innerHTML = getToken()
+        ? '<span class="text-green-600 font-bold">● 토큰 등록됨 · 업로드 시 자동 저장</span>'
+        : '<span class="text-gray-400">○ 토큰 미등록 · 업로드 후 파일 직접 올림</span>';
+}
+function toggleSettings(){
+    const p=document.getElementById('gh-settings-panel');
+    p.style.display = (p.style.display==='none'||!p.style.display)?'block':'none';
 }
 
 /* ---------- 집계 빌더 ---------- */
@@ -1564,7 +1586,7 @@ function aggStat(arr){
     const top=sd.slice(0,half);
     return { avg:Math.round(mean(prices)), top50:Math.round(mean(top.map(r=>r.경락가))),
              top50qty:top.reduce((s,r)=>s+r.거래량,0), max:Math.max(...prices), min:Math.min(...prices),
-             qty:arr.reduce((s,r)=>s+r.거래량,0), wt:Math.round(arr.reduce((s,r)=>s+r.거래량*r.boxKg,0)) };
+             qty:arr.reduce((s,r)=>s+r.거래량,0), wt:Math.round(arr.reduce((s,r)=>s+r.거래량*(r.boxKg||boxKgOf(r.규격)),0)) };
 }
 function buildDaily(rows){
     const g={};
@@ -1593,27 +1615,81 @@ function buildMarket(rows){
         return { 품목:arr[0].품목, 품종:v, 규격:spec, 시장목록:markets };
     });
 }
-function toHistory(rows){
-    return rows.map(r=>({ 품목:r.품목, 품종:r.품종, 도매시장:r.도매시장, 법인:r.법인, 원산지:r.원산지,
-                          규격:r.규격, 경락가:r.경락가, 거래량:r.거래량, 낙찰일시:r.낙찰일시 }));
-}
-function toTrend(daily){ return daily.map(r=>({ 품종:r.품종, 규격:r.규격, 평균가:r.평균가, 총거래량:r.총거래량 })); }
+const toTrend = daily => daily.map(r=>({ 품종:r.품종, 규격:r.규격, 평균가:r.평균가, 총거래량:r.총거래량 }));
 
-function rebuildDateAgg(rows){   // 한 (카테고리·날짜)의 원본행 → 집계 묶음
-    const auc = rows.filter(r=>(r.매매구분||'').includes('경매'));
-    const jng = rows.filter(r=>{ const m=r.매매구분||''; return m.includes('정가')||m.includes('수의'); });
-    return {
-        rows: rows,
-        daily: buildDaily(auc), market: buildMarket(auc), total: toHistory(auc),
-        jdaily: buildDaily(jng), jtotal: toHistory(jng),
-        trend: toTrend(buildDaily(auc))
-    };
+function deriveDate(e){
+    if(e.archived) return e;
+    const auc=(e.total||[]).map(withBoxKg);
+    const jng=(e.jtotal||[]).map(withBoxKg);
+    e.daily=buildDaily(auc); e.market=buildMarket(auc);
+    e.jdaily=buildDaily(jng); e.trend=toTrend(e.daily);
+    return e;
 }
 
-/* ---------- 엑셀 파일 처리 ---------- */
-const HEADERS = ['거래일자','경락일시','도매시장','법인','매매구분','부류','품목','품종','출하지','규격','거래량','경락가'];
+/* ---------- 직렬화 / 역직렬화 (깃허브 JSON) ---------- */
+function serialize(){
+    const out={ version:2, updated:new Date().toISOString(), cats:{} };
+    CATS.forEach(cat=>{
+        out.cats[cat]={ days:{} };
+        const dates=Object.keys(DB[cat]).filter(d=>d!=='미상').sort();
+        const recent=new Set(dates.slice(-RECENT_DAYS));
+        dates.forEach(d=>{
+            const e=DB[cat][d];
+            if(e.archived || !recent.has(d)){
+                out.cats[cat].days[d]={ archived:true, daily:e.daily||[], market:e.market||[], trend:e.trend||[] };
+            } else {
+                out.cats[cat].days[d]={ total:e.total||[], jtotal:e.jtotal||[] };
+            }
+        });
+    });
+    return out;
+}
+function loadDB(json){
+    DB={ hobak:{}, gamgyul:{}, mangam:{} };
+    if(!json||!json.cats) return;
+    CATS.forEach(cat=>{
+        const days=(json.cats[cat]||{}).days||{};
+        Object.entries(days).forEach(([d,e])=>{
+            if(e.archived){ DB[cat][d]={ archived:true, daily:e.daily||[], market:e.market||[], trend:e.trend||[], jdaily:[], total:[], jtotal:[] }; }
+            else { const entry={ archived:false, total:e.total||[], jtotal:e.jtotal||[] }; deriveDate(entry); DB[cat][d]=entry; }
+        });
+    });
+    if(json.updated) lastUpdate=json.updated.slice(0,10);
+}
+
+/* ---------- 깃허브 읽기 / 쓰기 ---------- */
+async function loadFromGitHub(){
+    const ut=document.getElementById('update-time'); if(ut) ut.textContent='불러오는 중...';
+    try{
+        const url=`https://raw.githubusercontent.com/${GH.owner}/${GH.repo}/${GH.branch}/${GH.path}?t=${Date.now()}`;
+        const res=await fetch(url,{cache:'no-store'});
+        if(res.ok){ const j=await res.json(); loadDB(j); }
+        else { loadDB(null); }   // 404 등 → 빈 상태
+    }catch(e){ console.warn('load fail', e); loadDB(null); }
+    rebuildAll();
+}
+const b64 = str => btoa(unescape(encodeURIComponent(str)));
+async function commitToGitHub(){
+    const token=getToken();
+    if(!token) return { ok:false, reason:'notoken' };
+    const api=`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${encodeURIComponent(GH.path)}`;
+    const H={ Authorization:'Bearer '+token, Accept:'application/vnd.github+json' };
+    let sha=null;
+    try{ const g=await fetch(api+`?ref=${GH.branch}&t=${Date.now()}`,{headers:H});
+        if(g.ok){ sha=(await g.json()).sha; } }catch(e){}
+    const json=serialize();
+    const body={ message:`v2 데이터 갱신 ${json.updated}`, content:b64(JSON.stringify(json)), branch:GH.branch };
+    if(sha) body.sha=sha;
+    try{
+        const p=await fetch(api,{ method:'PUT', headers:Object.assign({}, H, {'Content-Type':'application/json'}), body:JSON.stringify(body) });
+        if(p.ok) return { ok:true };
+        let msg=p.status+''; try{ msg+=' '+((await p.json()).message||''); }catch(e){}
+        return { ok:false, reason:msg };
+    }catch(e){ return { ok:false, reason:String(e).slice(0,120) }; }
+}
+
+/* ---------- 엑셀 파싱 ---------- */
 function normalizeRows(matrix){
-    // 헤더행 탐색
     let hr=-1;
     for(let i=0;i<Math.min(matrix.length,8);i++){
         const set=new Set(matrix[i].map(x=>String(x).trim()));
@@ -1626,20 +1702,18 @@ function normalizeRows(matrix){
     for(let i=hr+1;i<matrix.length;i++){
         const row=matrix[i]; if(!row||!row.length) continue;
         const price=N(get(row,'경락가')); if(!price) continue;
-        const spec=String(get(row,'규격')||'').trim();
         out.push({
-            date: String(get(row,'거래일자')||'').trim().slice(0,10),
-            낙찰일시: String(get(row,'경락일시')||'').trim(),
-            도매시장: String(get(row,'도매시장')||'').trim(),
-            법인: String(get(row,'법인')||'').trim(),
-            매매구분: String(get(row,'매매구분')||'').trim(),
-            품목: String(get(row,'품목')||'').trim(),
-            품종: String(get(row,'품종')||'').trim(),
-            원산지: String(get(row,'출하지')||'').trim(),
-            규격: spec,
-            거래량: N(get(row,'거래량')),
-            경락가: price,
-            boxKg: boxKgOf(spec)
+            date:String(get(row,'거래일자')||'').trim().slice(0,10),
+            낙찰일시:String(get(row,'경락일시')||'').trim(),
+            도매시장:String(get(row,'도매시장')||'').trim(),
+            법인:String(get(row,'법인')||'').trim(),
+            매매구분:String(get(row,'매매구분')||'').trim(),
+            품목:String(get(row,'품목')||'').trim(),
+            품종:String(get(row,'품종')||'').trim(),
+            원산지:String(get(row,'출하지')||'').trim(),
+            규격:String(get(row,'규격')||'').trim(),
+            거래량:N(get(row,'거래량')),
+            경락가:price
         });
     }
     return out;
@@ -1647,99 +1721,106 @@ function normalizeRows(matrix){
 const rowKey = r => [r.낙찰일시,r.도매시장,r.법인,r.규격,r.경락가,r.거래량].join('|');
 
 function ingestRows(allRows){
-    const store=loadStore();
-    let added=0, skipped=0;
-    const touched={}; // cat -> Set(date)
+    let added=0, skipped=0; const touched={};
     allRows.forEach(r=>{
-        const cat=categoryOf(r);
-        if(!cat){ skipped++; return; }
+        const cat=categoryOf(r); if(!cat){ skipped++; return; }
         const d=r.date||'미상';
-        store[cat]=store[cat]||{};
-        store[cat][d]=store[cat][d]||{rows:[]};
-        store[cat][d].rows=store[cat][d].rows||[];
-        const existing=new Set(store[cat][d].rows.map(rowKey));
-        if(!existing.has(rowKey(r))){ store[cat][d].rows.push(r); added++; }
+        DB[cat][d]=DB[cat][d]||{ archived:false, total:[], jtotal:[] };
+        const e=DB[cat][d];
+        if(e.archived){ e.archived=false; e.total=e.total||[]; e.jtotal=e.jtotal||[]; }
+        const isJ=(r.매매구분||'').includes('정가')||(r.매매구분||'').includes('수의');
+        const rec={ 품목:r.품목, 품종:r.품종, 도매시장:r.도매시장, 법인:r.법인, 원산지:r.원산지,
+                    규격:r.규격, 경락가:r.경락가, 거래량:r.거래량, 낙찰일시:r.낙찰일시 };
+        const arr = isJ ? e.jtotal : e.total;
+        const keys=new Set(arr.map(rowKey));
+        if(!keys.has(rowKey(rec))){ arr.push(rec); added++; }
         (touched[cat]=touched[cat]||new Set()).add(d);
-        if(d!=='미상') lastUpdate = d>lastUpdate ? d : lastUpdate;
+        if(d!=='미상' && d>lastUpdate) lastUpdate=d;
     });
-    // 변경된 날짜만 재집계
-    Object.entries(touched).forEach(([cat,dates])=>{
-        dates.forEach(d=>{ store[cat][d]={ ...rebuildDateAgg(store[cat][d].rows) }; });
-    });
-    saveStore(store);
-    return {added, skipped};
+    Object.entries(touched).forEach(([cat,ds])=>ds.forEach(d=>deriveDate(DB[cat][d])));
+    return { added, skipped };
 }
 
 function handleFiles(fileList){
     const files=[...fileList]; if(!files.length) return;
     const log=document.getElementById('upload-log');
+    log.innerHTML='<div class="text-gray-400">⏳ 엑셀 처리 중...</div>';
     let done=0, allRows=[], names=[];
     files.forEach(file=>{
         const reader=new FileReader();
-        reader.onload=e=>{
+        reader.onload=async e=>{
             try{
-                const wb=XLSX.read(e.target.result, {type:'array'});
-                wb.SheetNames.forEach(sn=>{
-                    const mat=XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, raw:false, defval:''});
-                    allRows=allRows.concat(normalizeRows(mat));
-                });
+                const wb=XLSX.read(e.target.result,{type:'array'});
+                wb.SheetNames.forEach(sn=>{ const mat=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false,defval:''}); allRows=allRows.concat(normalizeRows(mat)); });
                 names.push(file.name);
             }catch(err){ names.push(file.name+' (읽기실패)'); }
             done++;
-            if(done===files.length){
-                const res=ingestRows(allRows);
-                rebuildAll();
-                log.innerHTML = `<div class="text-green-600 font-bold">✅ ${names.length}개 파일 처리 · ${res.added.toLocaleString()}행 반영${res.skipped?` · 분류제외 ${res.skipped.toLocaleString()}행`:''}</div>`
-                    + `<div class="text-gray-400">${names.map(n=>'• '+n).join('<br>')}</div>`;
-            }
+            if(done===files.length) await finishIngest(allRows,names,log);
         };
         reader.readAsArrayBuffer(file);
     });
 }
-
+async function finishIngest(allRows,names,log){
+    const res=ingestRows(allRows);
+    rebuildAll();
+    const fileList=names.map(n=>'• '+n).join('<br>');
+    if(getToken()){
+        log.innerHTML='<div class="text-gray-400">⏳ 깃허브에 저장 중...</div>';
+        const c=await commitToGitHub();
+        if(c.ok){
+            log.innerHTML=`<div class="text-green-600 font-bold">✅ ${names.length}개 파일 · ${res.added.toLocaleString()}행 반영 · 깃허브 저장 완료</div>
+                <div class="text-gray-500">이제 모바일·다른 PC에서도 동일하게 보입니다 (반영까지 수십초 소요).</div>
+                <div class="text-gray-400 mt-1">${fileList}</div>`;
+        } else if(c.reason==='notoken'){ offerDownload(log,res,names,fileList); }
+        else {
+            log.innerHTML=`<div class="text-red-500 font-bold">⚠️ 깃허브 저장 실패: ${c.reason}</div>
+                <div class="text-gray-500">토큰 권한/만료를 확인하세요. 화면 데이터는 이 기기엔 반영됨.</div>`;
+        }
+    } else { offerDownload(log,res,names,fileList); }
+}
+function offerDownload(log,res,names,fileList){
+    const blob=new Blob([JSON.stringify(serialize())],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    log.innerHTML=`<div class="text-green-600 font-bold">✅ ${names.length}개 파일 · ${res.added.toLocaleString()}행 반영</div>
+        <div class="text-gray-600 mt-1">토큰 미등록 상태예요. 어디서든 보려면 ⚙️저장설정에서 토큰을 등록하거나, 아래 파일을 깃허브에 올리세요.</div>
+        <a href="${url}" download="v2-data.json" class="inline-block mt-1 text-orange-600 font-bold underline">⬇️ v2-data.json 내려받기</a>
+        <div class="text-gray-400 mt-1">${fileList}</div>`;
+}
 function clearAllData(){
-    if(!confirm('저장된 모든 경매 데이터(누적 트렌드 포함)를 삭제할까요?')) return;
-    localStorage.removeItem(STORE_KEY);
-    location.reload();
+    if(!confirm('현재 화면의 데이터를 비웁니다. (깃허브 저장본은 그대로이며, 새로고침하면 다시 불러옵니다)')) return;
+    DB={ hobak:{}, gamgyul:{}, mangam:{} }; rebuildAll();
 }
 
 /* ---------- 화면 재구성 ---------- */
 function rebuildAll(){
-    const store=loadStore();
     window._currentStats=window._currentStats||{};
-    let anyData=false, latestOverall='';
+    let anyData=false, latest='';
     CATS.forEach(cat=>{
-        const catStore=store[cat]||{};
-        const dates=Object.keys(catStore).filter(d=>d!=='미상').sort();
+        const dates=Object.keys(DB[cat]).filter(d=>d!=='미상').sort();
         const dailyEl=document.getElementById(cat+'-daily-container');
         if(!dates.length){
             window._currentStats[cat]={auction:{daily_report:[],market_top6:[],total_history:[]},jungga:{daily_report:[],total_history:[]}};
-            if(dailyEl) dailyEl.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">엑셀을 업로드하면 표시됩니다</p>';
-            // 트렌드 셀렉트 비우기
+            if(dailyEl) dailyEl.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">데이터가 없습니다 · PC에서 엑셀을 업로드하세요</p>';
             return;
         }
         anyData=true;
-        const today=dates[dates.length-1];
-        if(today>latestOverall) latestOverall=today;
-        const td=catStore[today];
+        const today=dates[dates.length-1]; if(today>latest) latest=today;
+        const td=DB[cat][today];
         window._currentStats[cat]={
             auction:{ daily_report:td.daily||[], market_top6:td.market||[], total_history:td.total||[] },
             jungga:{ daily_report:td.jdaily||[], total_history:td.jtotal||[] }
         };
-        // 오늘 화면
         renderDaily(cat+'-daily-container', td.daily||[]);
         renderTop50(cat+'-top50-container', td.daily||[]);
         renderMarketTop6(cat+'-market-container', td.market||[]);
         renderJungga(cat+'-jungga-container', td.jdaily||[], td.jtotal||[]);
         buildFilters(cat, td.total||[]);
-        // 트렌드(전체 날짜) / 과거 날짜(오늘 제외)
         const trend={}, dHist={}, mHist={};
-        dates.forEach(d=>{ trend[d]=catStore[d].trend||[]; });
-        dates.filter(d=>d!==today).forEach(d=>{ dHist[d]=catStore[d].daily||[]; mHist[d]=catStore[d].market||[]; });
+        dates.forEach(d=>{ trend[d]=DB[cat][d].trend||[]; });
+        dates.filter(d=>d!==today).forEach(d=>{ dHist[d]=DB[cat][d].daily||[]; mHist[d]=DB[cat][d].market||[]; });
         initTrendControls(cat, trend);
         initDailyDatePicker(cat, dHist, td.daily, mHist);
     });
-    // 계산기 힌트 가격
     todayPrices={};
     ['mangam','gamgyul'].forEach(cat=>{
         const dr=(window._currentStats[cat]||{}).auction?.daily_report||[];
@@ -1748,9 +1829,9 @@ function rebuildAll(){
     });
     updateTodayHint();
     const ut=document.getElementById('update-time');
-    if(ut) ut.textContent = anyData ? `최신 ${latestOverall||lastUpdate} 기준` : '데이터 없음 · 엑셀 업로드';
+    if(ut) ut.textContent = anyData ? `최신 ${latest||lastUpdate} 기준` : '데이터 없음';
 }
-function manualRefresh(){ rebuildAll(); }
+function manualRefresh(){ loadFromGitHub(); }
 
 /* ============================================================
    수익예상계산기
@@ -1808,21 +1889,15 @@ function calcProfit(){
     const packing=N(document.getElementById('f-packing').value);
     const fund=N(document.getElementById('f-fund').value);
     const fixed=transport+unload+sorting+packing+fund;
-
-    // 매입가(박스)
     const buyPer=Math.round(buy*specKg);
-    // 손익분기 경락가
     const denom=1-commR-etcR;
     const breakeven = denom>0 ? Math.round((buyPer+fixed)/denom) : 0;
     document.getElementById('r-breakeven').textContent = breakeven? fmt(breakeven):dash();
     document.getElementById('r-breakeven-kg').textContent = breakeven&&specKg? `≈ ${fmt(Math.round(breakeven/specKg))}원/kg`:'';
-
-    // 박스당
     const deductPer = Math.round(sell*commR + sell*etcR + fixed);
     const netPer = sell - deductPer;
     const profitPer = netPer - buyPer;
     const margin = buyPer>0 ? (profitPer/buyPer*100) : 0;
-
     document.getElementById('f-commission-val').textContent = sell? fmt(Math.round(sell*commR))+'원':'';
     document.getElementById('f-transport-val').textContent = transport? fmt(transport)+'원':'';
     document.getElementById('f-unload-val').textContent = unload? fmt(unload)+'원':'';
@@ -1831,7 +1906,6 @@ function calcProfit(){
     document.getElementById('f-fund-val').textContent = fund? fmt(fund)+'원':'';
     document.getElementById('f-etc-val').textContent = (etcR&&sell)? fmt(Math.round(sell*etcR))+'원':'';
     document.getElementById('f-total-deduct').textContent = sell? fmt(deductPer)+'원':dash();
-
     document.getElementById('r-sellprice').textContent = sell? fmt(sell)+'원':dash();
     document.getElementById('r-sellprice-kg').textContent = (sell&&specKg)? fmt(Math.round(sell/specKg))+'원/kg':'';
     document.getElementById('r-deduct').textContent = sell? fmt(deductPer)+'원':dash();
@@ -1843,19 +1917,14 @@ function calcProfit(){
     const mg=document.getElementById('r-margin');
     mg.textContent = (sell&&buy)? margin.toFixed(1)+'%':dash();
     mg.className='text-sm font-bold '+(margin>=0?'text-green-600':'text-red-500');
-
-    // 전체
     document.getElementById('r-total-cost').textContent = (buy&&qty)? fmt(buyPer*qty)+'원':dash();
     document.getElementById('r-total-net').textContent = (sell&&qty)? fmt(netPer*qty)+'원':dash();
     document.getElementById('r-total-deduct').textContent = (sell&&qty)? fmt(deductPer*qty)+'원':dash();
-    const tp=document.getElementById('r-total-profit');
-    const totProfit=profitPer*qty;
+    const tp=document.getElementById('r-total-profit'); const totProfit=profitPer*qty;
     tp.textContent = (sell&&buy&&qty)? (totProfit>=0?'+':'')+fmt(totProfit)+'원':dash();
     const card=document.getElementById('r-total-profit-card');
     if(sell&&buy&&qty){ card.className='rounded-xl p-3 text-center '+(totProfit>=0?'bg-green-50':'bg-red-50');
         tp.className='text-base font-black '+(totProfit>=0?'text-green-600':'text-red-500'); }
-
-    // 시뮬레이션
     const base = sell || breakeven || 0;
     const tb=document.getElementById('sim-tbody');
     if(!base){ tb.innerHTML='<tr><td colspan="6" class="py-4 text-center text-gray-300">경락가를 입력하세요</td></tr>'; return; }
@@ -1879,18 +1948,17 @@ function calcProfit(){
    초기화
    ============================================================ */
 window.addEventListener('DOMContentLoaded', ()=>{
-    // 드래그앤드롭
     const dz=document.getElementById('drop-zone');
     if(dz){
         ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.background='#fed7aa';}));
         ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.background='#fffaf5';}));
         dz.addEventListener('drop',e=>{ if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
     }
-    // 계산기 초기화
+    const ti=document.getElementById('gh-token-input'); if(ti && getToken()) ti.value=getToken();
+    renderTokenState();
     updateSpecOptions('9kg');
     setWorkType('선과장');
-    // 저장된 데이터 렌더
-    rebuildAll();
+    loadFromGitHub();
 });
 
 </script>
