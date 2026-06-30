@@ -1021,6 +1021,7 @@ function renderTop50(containerId,data){
 // ── 시장 TOP6 ─────────────────────────────────────────────────
 function renderMarketTop6(containerId,marketData){
     const el=document.getElementById(containerId);
+    const _cat=containerId.split('-')[0];
     if(!marketData||!marketData.length){el.innerHTML='<p class="text-gray-300 text-sm p-4 text-center">데이터 없음</p>';return;}
     const groups={};
     marketData.forEach(item=>{const v=item.품종||item.품목||'';if(!groups[v])groups[v]=[];groups[v].push(item);});
@@ -1069,7 +1070,7 @@ function renderMarketTop6(containerId,marketData){
                                     const cKg=(kgUnit>0&&c.상위50평균가)?Math.round(c.상위50평균가/kgUnit):0;
                                     return `<tr class="border-b border-emerald-100">
                                     <td class="py-1.5 px-3 font-bold text-emerald-800">
-                                        <span class="text-xs ${ci===0?'text-yellow-500':ci===1?'text-gray-400':'text-amber-600'} mr-1">${ci===0?'①':ci===1?'②':'③'}</span>${c.법인}
+                                        <span class="text-xs ${ci===0?'text-yellow-500':ci===1?'text-gray-400':'text-amber-600'} mr-1">${ci===0?'①':ci===1?'②':'③'}</span><span style="text-decoration:underline;text-underline-offset:2px;cursor:pointer;color:#047857" onclick="jumpToTotal('${_cat}','${ea(variety)}','${ea(item.규격)}','${ea(m.시장명)}','${ea(c.법인)}')">${c.법인} 🔎</span>
                                     </td>
                                     <td class="py-1.5 px-2 text-center font-black text-emerald-700">${fmt(c.상위50평균가)}원</td>
                                     <td class="py-1.5 px-2 text-center font-bold text-purple-600">${cKg?fmt(cKg)+'원':'-'}<span class="text-gray-400 font-normal"> /kg</span></td>
@@ -1201,6 +1202,20 @@ const totalData={};
 // sortState: { col: 'variety'|'market'|'corp'|'spec'|'price'|'qty'|'time', dir: 'asc'|'desc' }
 const _sortState = {};
 
+function ea(v){ return String(v==null?'':v).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function jumpToTotal(cat, variety, spec, market, corp){
+    // 전체내역 서브탭으로 전환
+    const btn=[...document.querySelectorAll('#tab-'+cat+' .sub-btn')].find(b=>((b.getAttribute('onclick')||'').includes("'total'")));
+    if(btn) changeSubTab(cat,'total',btn);
+    // 필터 설정: 품종/시장은 셀렉트, 법인은 검색어 (규격은 전체 = 그 법인 총거래)
+    const setSel=(id,val)=>{ const e=document.getElementById(id); if(!e) return; const ok=[...(e.options||[])].some(o=>o.value===val); e.value = ok? val : ''; };
+    setSel(cat+'-filter-variety', variety);
+    setSel(cat+'-filter-market', market);
+    const sp=document.getElementById(cat+'-filter-spec'); if(sp) sp.value='';
+    const tx=document.getElementById(cat+'-filter-text'); if(tx) tx.value=corp||'';
+    applyFilter(cat);
+    const cont=document.getElementById(cat+'-total-container'); if(cont) cont.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function buildFilters(cat,data){
     totalData[cat]=data;
     const label = cat==='hobak' ? '품목' : '품종';
@@ -1646,6 +1661,7 @@ const CATS = ['hobak','gamgyul','mangam'];
 const MANGAM_KW = ['천혜향','한라봉','레드향','황금향','카라향','진지향','천백향'];
 const GAMGYUL_KW = ['감귤','노지','하우스감귤','타이벡'];
 const JEJU_ONLY = { hobak:true, gamgyul:false, mangam:false };
+const HOBAK_VARIETIES = ['단호박','미니밤호박'];   // 호박은 이 품종만 수집 (애호박·쥬키니·늙은호박·수입 등 제외)
 
 // ── 깃허브 저장소 설정 (수정 지점) ──
 const GH = { owner:'nambong2-prog', repo:'dolmang-data', branch:'main', path:'v2-data.json' };
@@ -1665,8 +1681,25 @@ function categoryOf(row){
     const pum=(row.품목||'')+'', jong=(row.품종||'')+'', origin=(row.원산지||'')+'';
     if(MANGAM_KW.some(k=>jong.includes(k)||pum.includes(k))) return 'mangam';
     if(GAMGYUL_KW.some(k=>jong.includes(k)||pum.includes(k))) return 'gamgyul';
-    if(pum.includes('호박')||jong.includes('호박')) return origin.includes('제주') ? 'hobak' : (JEJU_ONLY.hobak ? null : 'hobak');
+    if(pum.includes('호박')||jong.includes('호박')){
+        if(!HOBAK_VARIETIES.some(k=>jong.includes(k))) return null;   // 단호박·미니밤호박만
+        return origin.includes('제주') ? 'hobak' : (JEJU_ONLY.hobak ? null : 'hobak');
+    }
     return null;
+}
+
+function cleanupHobak(){
+    // 기존에 잘못 들어간 호박(단호박·미니밤호박 외 / 비제주)을 정리
+    let changed=false;
+    Object.keys((DB&&DB.hobak)||{}).forEach(d=>{
+        const e=DB.hobak[d]; if(!e||e.archived) return;
+        const ok=r=>{ const j=String(r.품종||''), o=String(r.원산지||''); return HOBAK_VARIETIES.some(k=>j.includes(k)) && o.includes('제주'); };
+        let dc=false;
+        if(e.total){ const n=e.total.filter(ok); if(n.length!==e.total.length){ e.total=n; dc=true; } }
+        if(e.jtotal){ const n=e.jtotal.filter(ok); if(n.length!==e.jtotal.length){ e.jtotal=n; dc=true; } }
+        if(dc){ deriveDate(e); changed=true; }
+    });
+    return changed;
 }
 
 /* ---------- 토큰 ---------- */
@@ -1801,7 +1834,9 @@ async function loadFromGitHub(){
         if(res.ok){ const j=await res.json(); loadDB(j); }
         else { loadDB(null); }   // 404 등 → 빈 상태
     }catch(e){ console.warn('load fail', e); loadDB(null); }
+    const _cleaned = cleanupHobak();
     rebuildAll();
+    if(_cleaned && getToken()){ commitToGitHub().catch(()=>{}); }   // 잘못 들어간 호박 자동 정리 후 깃허브 갱신
 }
 const b64 = str => btoa(unescape(encodeURIComponent(str)));
 async function commitToGitHub(){
