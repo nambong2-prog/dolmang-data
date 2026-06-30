@@ -802,23 +802,30 @@
                 <div class="px-4 py-3 border-b border-gray-100">
                     <h2 class="font-bold text-gray-800 text-sm">💰 전체 수익 요약</h2>
                 </div>
-                <div class="p-4 grid grid-cols-2 gap-3">
-                    <div class="bg-gray-50 rounded-xl p-3 text-center">
-                        <p class="text-xs text-gray-400 mb-1">총 매입원가</p>
-                        <p id="r-total-cost" class="text-base font-black text-gray-700">—</p>
+                <div class="p-4">
+                    <div class="bg-amber-50 rounded-xl p-3 text-center mb-3">
+                        <p class="text-xs text-amber-500 mb-1">총 공판금액 <span class="text-amber-300">(경락가 × 출하수량)</span></p>
+                        <p id="r-total-gross" class="text-lg font-black text-amber-700">—</p>
                     </div>
-                    <div class="bg-blue-50 rounded-xl p-3 text-center">
-                        <p class="text-xs text-blue-400 mb-1">총 실수취액</p>
-                        <p id="r-total-net" class="text-base font-black text-blue-600">—</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-red-50 rounded-xl p-3 text-center">
+                            <p class="text-xs text-red-400 mb-1">− 총 공제합계</p>
+                            <p id="r-total-deduct" class="text-base font-black text-red-500">—</p>
+                        </div>
+                        <div class="bg-blue-50 rounded-xl p-3 text-center">
+                            <p class="text-xs text-blue-400 mb-1">= 총 실수령액</p>
+                            <p id="r-total-net" class="text-base font-black text-blue-600">—</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-xs text-gray-400 mb-1">− 총 매입원가</p>
+                            <p id="r-total-cost" class="text-base font-black text-gray-700">—</p>
+                        </div>
+                        <div id="r-total-profit-card" class="rounded-xl p-3 text-center bg-green-50">
+                            <p class="text-xs mb-1 text-green-600">= 총 순이익</p>
+                            <p id="r-total-profit" class="text-base font-black text-green-600">—</p>
+                        </div>
                     </div>
-                    <div class="bg-red-50 rounded-xl p-3 text-center">
-                        <p class="text-xs text-red-400 mb-1">총 공제합계</p>
-                        <p id="r-total-deduct" class="text-base font-black text-red-500">—</p>
-                    </div>
-                    <div id="r-total-profit-card" class="rounded-xl p-3 text-center bg-green-50">
-                        <p class="text-xs mb-1 text-green-600">총 순이익</p>
-                        <p id="r-total-profit" class="text-base font-black text-green-600">—</p>
-                    </div>
+                    <p class="text-xs text-gray-400 text-center mt-3 leading-relaxed">공판금액 − 공제 = <b class="text-blue-500">실수령액</b><br>실수령액 − 매입원가 = <b class="text-green-600">순이익</b></p>
                 </div>
             </div>
 
@@ -2157,6 +2164,7 @@ function calcProfit(){
     const mg=document.getElementById('r-margin');
     mg.textContent = (sell&&buy)? margin.toFixed(1)+'%':dash();
     mg.className='text-sm font-bold '+(margin>=0?'text-green-600':'text-red-500');
+    document.getElementById('r-total-gross').textContent = (sell&&qty)? fmt(sell*qty)+'원':dash();
     document.getElementById('r-total-cost').textContent = (buy&&qty)? fmt(buyPer*qty)+'원':dash();
     document.getElementById('r-total-net').textContent = (sell&&qty)? fmt(netPer*qty)+'원':dash();
     document.getElementById('r-total-deduct').textContent = (sell&&qty)? fmt(deductPer*qty)+'원':dash();
