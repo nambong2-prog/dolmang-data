@@ -1682,7 +1682,8 @@ function categoryOf(row){
     if(MANGAM_KW.some(k=>jong.includes(k)||pum.includes(k))) return 'mangam';
     if(GAMGYUL_KW.some(k=>jong.includes(k)||pum.includes(k))) return 'gamgyul';
     if(pum.includes('호박')||jong.includes('호박')){
-        if(!HOBAK_VARIETIES.some(k=>jong.includes(k))) return null;   // 단호박·미니밤호박만
+        if(jong.includes('수입')) return null;                         // 수입산 제외
+        if(!HOBAK_VARIETIES.some(k=>jong.startsWith(k))) return null;  // 단호박·미니밤호박 시작만 (애호박·쥬키니·기타 제외)
         return origin.includes('제주') ? 'hobak' : (JEJU_ONLY.hobak ? null : 'hobak');
     }
     return null;
@@ -1693,7 +1694,7 @@ function cleanupHobak(){
     let changed=false;
     Object.keys((DB&&DB.hobak)||{}).forEach(d=>{
         const e=DB.hobak[d]; if(!e||e.archived) return;
-        const ok=r=>{ const j=String(r.품종||''), o=String(r.원산지||''); return HOBAK_VARIETIES.some(k=>j.includes(k)) && o.includes('제주'); };
+        const ok=r=>{ const j=String(r.품종||''), o=String(r.원산지||''); if(j.includes('수입')) return false; return HOBAK_VARIETIES.some(k=>j.startsWith(k)) && o.includes('제주'); };
         let dc=false;
         if(e.total){ const n=e.total.filter(ok); if(n.length!==e.total.length){ e.total=n; dc=true; } }
         if(e.jtotal){ const n=e.jtotal.filter(ok); if(n.length!==e.jtotal.length){ e.jtotal=n; dc=true; } }
