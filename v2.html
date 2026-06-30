@@ -866,7 +866,8 @@ function changeTab(name,btn){
     document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
     document.getElementById('tab-'+name).classList.add('active');
     document.querySelectorAll('.tab-main-btn').forEach(b=>{b.classList.remove('text-orange-600','border-orange-500');b.classList.add('text-gray-400','border-transparent');});
-    btn.classList.remove('text-gray-400','border-transparent'); btn.classList.add('text-orange-600','border-orange-500');
+    if(btn){ btn.classList.remove('text-gray-400','border-transparent'); btn.classList.add('text-orange-600','border-orange-500'); }
+    if(!_navLock) pushNav();
 }
 function changeSubTab(cat,name,btn){
     document.querySelectorAll('#tab-'+cat+' .sub-tab-content').forEach(e=>e.classList.remove('active'));
@@ -880,9 +881,47 @@ function changeSubTab(cat,name,btn){
     btn.classList.remove('bg-gray-100','text-gray-600','bg-purple-50','text-purple-700','bg-blue-50','text-blue-700');
     btn.classList.add('bg-orange-500','text-white');
     if(name==='trend') drawTrend(cat);
+    if(!_navLock) pushNav();
     // 버튼 보이도록 스크롤
-    btn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+    if(btn&&btn.scrollIntoView) btn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
 }
+
+/* ===== 브라우저 뒤로가기/북마크 (탭 히스토리) ===== */
+var _navLock=false;
+function _curMain(){ const e=document.querySelector('.tab-content.active'); return e? e.id.replace('tab-',''):'hobak'; }
+function _curSub(cat){ const e=document.querySelector('#tab-'+cat+' .sub-tab-content.active'); return e? e.id.replace(cat+'-',''):''; }
+function pushNav(){
+    const cat=_curMain(), sub=_curSub(cat);
+    const hash='#'+cat+(sub?'/'+sub:'');
+    if(location.hash!==hash){ try{ history.pushState({cat,sub},'',hash); }catch(e){} }
+}
+function _activateMain(name){
+    document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+    const t=document.getElementById('tab-'+name); if(t) t.classList.add('active');
+    document.querySelectorAll('.tab-main-btn').forEach(b=>{
+        const on=((b.getAttribute('onclick')||'').includes("changeTab('"+name+"'"));
+        b.classList.remove('text-orange-600','border-orange-500','text-gray-400','border-transparent');
+        b.classList.add(on?'text-orange-600':'text-gray-400', on?'border-orange-500':'border-transparent');
+    });
+}
+function _activateSub(cat,name){
+    if(!name) return;
+    const btn=[...document.querySelectorAll('#tab-'+cat+' .sub-btn')].find(b=>((b.getAttribute('onclick')||'').includes("'"+name+"'")));
+    if(btn) changeSubTab(cat,name,btn);
+    if(cat==='hobak'&&name==='report'&&typeof renderReportTab==='function') renderReportTab();
+}
+const _DEF_SUB={hobak:'report',gamgyul:'daily',mangam:'daily',calc:''};
+function applyHash(){
+    const h=(location.hash||'').replace(/^#/,'');
+    const parts=h.split('/');
+    const cat=parts[0]||'hobak';
+    const sub=(parts[1]!==undefined&&parts[1]!=='')?parts[1]:(_DEF_SUB[cat]||'');
+    _navLock=true;
+    _activateMain(cat);
+    _activateSub(cat,sub);
+    _navLock=false;
+}
+window.addEventListener('popstate', applyHash);
 
 // ── 유틸 ─────────────────────────────────────────────────────
 const fmt  = n => Number(n).toLocaleString();
@@ -2128,6 +2167,8 @@ window.addEventListener('DOMContentLoaded', ()=>{
     updateSpecOptions('9kg');
     setWorkType('선과장');
     loadFromGitHub();
+    if(location.hash){ applyHash(); }
+    else { const cat=_curMain(), sub=_curSub(cat); try{ history.replaceState({cat,sub},'','#'+cat+(sub?'/'+sub:'')); }catch(e){} }
 });
 
 
