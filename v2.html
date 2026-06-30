@@ -1062,7 +1062,7 @@ function renderMarketTop6(containerId,marketData){
                                     <th class="py-1 px-2">상위50%평균</th>
                                     <th class="py-1 px-2">kg단가</th>
                                     <th class="py-1 px-2 hide-m">전체평균</th>
-                                    <th class="py-1 px-2 hide-m">최고가</th>
+                                    <th class="py-1 px-2">최고가</th>
                                     <th class="py-1 px-2">거래량</th>
                                 </tr></thead>
                                 <tbody>${corps.slice(0,3).map((c,ci)=>{
@@ -1074,7 +1074,7 @@ function renderMarketTop6(containerId,marketData){
                                     <td class="py-1.5 px-2 text-center font-black text-emerald-700">${fmt(c.상위50평균가)}원</td>
                                     <td class="py-1.5 px-2 text-center font-bold text-purple-600">${cKg?fmt(cKg)+'원':'-'}<span class="text-gray-400 font-normal"> /kg</span></td>
                                     <td class="py-1.5 px-2 text-center text-gray-500 hide-m">${fmt(c.평균가)}원</td>
-                                    <td class="py-1.5 px-2 text-center text-red-400 hide-m">${fmt(c.최고가)}원</td>
+                                    <td class="py-1.5 px-2 text-center text-red-400">${fmt(c.최고가)}원</td>
                                     <td class="py-1.5 px-2 text-center text-gray-500">${fmt(c.총거래량)}박스</td>
                                 </tr>`;}).join('')}</tbody>
                             </table>
@@ -2338,7 +2338,6 @@ function generateReport(cat, dates, periodTxt){
       ※ 경락가는 수수료·공제 차감 전 금액. 실수령은 수익예상계산 탭 참고.
     </footer>`;
 }
-
 </script>
 </body>
 </html>
