@@ -633,7 +633,8 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">품종</label>
-                            <select id="c-variety" onchange="updateSpecOptions()" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                            <select id="c-variety" onchange="onVarietyChange()" class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                                <option value="단호박">단호박</option>
                                 <option value="천혜향">천혜향</option>
                                 <option value="한라봉">한라봉</option>
                                 <option value="레드향">레드향</option>
@@ -657,7 +658,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">출하 수량 <span class="text-orange-400">(박스)</span></label>
-                            <input id="c-qty" type="number" placeholder="예: 100" oninput="calcProfit()"
+                            <input id="c-qty" type="number" placeholder="예: 240" value="240" oninput="syncDanhobakCosts();calcProfit()"
                                 class="calc-input w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
                         </div>
                     </div>
@@ -2047,6 +2048,7 @@ function toggleUpload(){ const c=document.getElementById('upload-card'); if(!c) 
 let workType='선과장';
 const FEE_DEFAULTS={commission:6,transport:1800,unload:240,sorting:2500,packing:1550,fund:96};
 const SPEC_MAP={
+    단호박:['3kg','5kg','8kg','10kg'],
     천혜향:['3kg','5kg','9kg','10kg'], 한라봉:['3kg','5kg','9kg','10kg'],
     레드향:['3kg','5kg','9kg','10kg'], 카라향:['3kg','5kg','9kg','10kg'],
     감귤:['3kg','5kg','10kg','15kg']
@@ -2079,6 +2081,36 @@ function resetFees(){
     document.getElementById('f-fund').value=FEE_DEFAULTS.fund;
     calcProfit();
 }
+
+/* ── 단호박 프리셋 (1파레트 240개 기준) ── */
+const DANHOBAK = { qty:240, commission:6, transportTotal:150000, unloadTotal:25000, sorting:1500, packing:1000, fund:0 };
+let _costMode='citrus';
+function syncDanhobakCosts(){
+    if(_costMode!=='danhobak') return;
+    const qty=N(document.getElementById('c-qty').value)||DANHOBAK.qty;
+    document.getElementById('f-transport').value=Math.round(DANHOBAK.transportTotal/qty);  // 운송비 15만 ÷ 수량
+    document.getElementById('f-unload').value=Math.round(DANHOBAK.unloadTotal/qty);          // 하역비 2.5만 ÷ 수량
+}
+function applyVarietyPreset(){
+    const v=document.getElementById('c-variety').value;
+    if(v==='단호박'){
+        _costMode='danhobak';
+        const qtyEl=document.getElementById('c-qty');
+        if(!N(qtyEl.value)) qtyEl.value=DANHOBAK.qty;
+        document.getElementById('f-commission').value=DANHOBAK.commission;
+        document.getElementById('f-sorting').value=DANHOBAK.sorting;
+        document.getElementById('f-packing').value=DANHOBAK.packing;
+        document.getElementById('f-fund').value=DANHOBAK.fund;
+        syncDanhobakCosts();
+        setWorkType('직접');          // 단호박은 감협 2% 없음
+    } else {
+        _costMode='citrus';
+        resetFees();
+        setWorkType('선과장');
+    }
+    calcProfit();
+}
+function onVarietyChange(){ updateSpecOptions(); applyVarietyPreset(); }
 function fillTodayPrice(){
     const v=document.getElementById('c-variety').value;
     if(todayPrices[v]){ document.getElementById('c-sellprice').value=Math.round(todayPrices[v]); calcProfit(); }
@@ -2164,8 +2196,8 @@ window.addEventListener('DOMContentLoaded', ()=>{
     }
     const ti=document.getElementById('gh-token-input'); if(ti && getToken()) ti.value=getToken();
     renderTokenState();
-    updateSpecOptions('9kg');
-    setWorkType('선과장');
+    updateSpecOptions();
+    applyVarietyPreset();   // 기본 단호박 프리셋 (240개·3kg·단호박 비용)
     loadFromGitHub();
     if(location.hash){ applyHash(); }
     else { const cat=_curMain(), sub=_curSub(cat); try{ history.replaceState({cat,sub},'','#'+cat+(sub?'/'+sub:'')); }catch(e){} }
