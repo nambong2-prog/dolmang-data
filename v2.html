@@ -1066,20 +1066,29 @@ function renderTop50(containerId,data){
 }
 
 // ── 시장 TOP6 ─────────────────────────────────────────────────
+let _mktSort='top50';              // 'top50' | 'max'
+const _lastMarket={};
+function sortMkts(list){
+    const key=_mktSort==='max'?'최고가':'상위50평균가';
+    return [...list].sort((a,b)=>(b[key]||0)-(a[key]||0)).slice(0,6);
+}
+function setMktSort(cat,key){ _mktSort=key; const md=_lastMarket[cat]; if(md) renderMarketTop6(cat+'-market-container', md); }
 function renderMarketTop6(containerId,marketData){
     const el=document.getElementById(containerId);
     const _cat=containerId.split('-')[0];
+    _lastMarket[_cat]=marketData;
     if(!marketData||!marketData.length){el.innerHTML='<p class="text-gray-300 text-sm p-4 text-center">데이터 없음</p>';return;}
     const groups={};
     marketData.forEach(item=>{const v=item.품종||item.품목||'';if(!groups[v])groups[v]=[];groups[v].push(item);});
     Object.keys(groups).forEach(v=>groups[v].sort((a,b)=>parseKg(a.규격)-parseKg(b.규격)));
     let html='<div class="p-3 space-y-6">';
+    html+=`<div class="flex items-center gap-2 mb-1 px-1"><span class="text-xs font-bold text-gray-500">정렬</span><button onclick="setMktSort('${_cat}','top50')" class="text-xs font-bold px-3 py-1 rounded-full border ${_mktSort==='top50'?'bg-emerald-600 text-white border-emerald-600':'bg-white text-gray-500 border-gray-200'}">상위50%평균</button><button onclick="setMktSort('${_cat}','max')" class="text-xs font-bold px-3 py-1 rounded-full border ${_mktSort==='max'?'bg-red-500 text-white border-red-500':'bg-white text-gray-500 border-gray-200'}">최고가</button></div>`;
     Object.keys(groups).forEach(variety=>{
         html+=`<div class="border border-emerald-100 rounded-xl overflow-hidden shadow-sm">
             <div class="bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2.5 flex items-center gap-2 border-b border-emerald-100">
                 <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
                 <span class="font-black text-emerald-700 text-sm">${variety}</span>
-                <span class="text-xs text-emerald-400 font-normal ml-1">규격별 시장 TOP6 · 상위50% 평균가 기준</span>
+                <span class="text-xs text-emerald-400 font-normal ml-1">규격별 시장 TOP6 · ${_mktSort==='max'?'최고가':'상위50% 평균가'} 기준</span>
             </div>
             <div class="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 market-top6-grid">`;
         groups[variety].forEach(item=>{
@@ -1096,14 +1105,15 @@ function renderMarketTop6(containerId,marketData){
                     <th class="px-2">kg단가</th>
                     <th class="px-2 hide-m">전체평균</th>
                     <th class="px-2">거래량</th>
+                    <th class="px-2">최고가</th>
                 </tr></thead><tbody>
-                ${item.시장목록.map((m,i)=>{
+                ${sortMkts(item.시장목록).map((m,i)=>{
                     const rowId=uid+'_'+i;
                     const corps=(m.법인목록||[]);
                     const kgUnit=parseKg(item.규격);
                     const mKg=(kgUnit>0&&m.상위50평균가)?Math.round(m.상위50평균가/kgUnit):0;
                     const corpsHtml=corps.length?`<tr id="corp_${rowId}" style="display:none">
-                        <td colspan="6" class="p-0">
+                        <td colspan="7" class="p-0">
                             <table class="w-full text-xs bg-emerald-50">
                                 <thead><tr class="bg-emerald-200 text-emerald-800">
                                     <th class="py-1 px-3 text-left">법인 <span class="font-normal text-emerald-500">(상위3)</span></th>
@@ -1136,6 +1146,7 @@ function renderMarketTop6(containerId,marketData){
                         <td class="text-center font-bold text-purple-600 px-2">${mKg?fmt(mKg)+'원':'-'}<span class="text-gray-400 font-normal"> /kg</span></td>
                         <td class="text-center text-gray-400 px-2 hide-m">${fmt(m.평균가)}원</td>
                         <td class="text-center text-gray-500 px-2">${fmt(m.거래량)}박스</td>
+                        <td class="text-center px-2 ${_mktSort==='max'?'font-black text-red-600':'text-red-400'}">${fmt(m.최고가)}원</td>
                     </tr>${corpsHtml}`;
                 }).join('')}
                 </tbody></table>
@@ -1802,8 +1813,8 @@ function buildMarket(rows){
             const corps=Object.entries(cg).map(([cp,cr])=>{ const cs=aggStat(cr);
                 return { 법인:cp, 상위50평균가:cs.top50, 평균가:cs.avg, 최고가:cs.max, 총거래량:cs.qty }; })
                 .sort((a,b)=>b.상위50평균가-a.상위50평균가);
-            return { 시장명:mk, 상위50평균가:st.top50, 평균가:st.avg, 거래량:st.qty, 법인목록:corps };
-        }).sort((a,b)=>b.상위50평균가-a.상위50평균가).slice(0,6);
+            return { 시장명:mk, 상위50평균가:st.top50, 평균가:st.avg, 최고가:st.max, 거래량:st.qty, 법인목록:corps };
+        }).sort((a,b)=>b.상위50평균가-a.상위50평균가);
         return { 품목:arr[0].품목, 품종:v, 규격:spec, 시장목록:markets };
     });
 }
