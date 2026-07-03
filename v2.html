@@ -123,17 +123,9 @@
             .filter-full { grid-column:1/-1; }
 
             /* 일일리포트 테이블 - 모바일 최적화 */
-            .daily-inner-table { font-size:11px !important; table-layout:fixed; width:100% !important; }
+            .daily-inner-table { font-size:11px !important; white-space:nowrap; width:auto; min-width:100%; }
             .daily-inner-table th,
-            .daily-inner-table td { padding:6px 3px !important; word-break:keep-all; }
-            .daily-inner-table th:nth-child(1),
-            .daily-inner-table td:nth-child(1) { width:18% !important; }  /* 규격 */
-            .daily-inner-table th:nth-child(2),
-            .daily-inner-table td:nth-child(2) { width:26% !important; }  /* 평균가 */
-            .daily-inner-table th:nth-child(3),
-            .daily-inner-table td:nth-child(3) { width:22% !important; }  /* kg단가 */
-            .daily-inner-table th:nth-child(6),
-            .daily-inner-table td:nth-child(6) { width:20% !important; }  /* 거래량 */
+            .daily-inner-table td { padding:6px 8px !important; }
 
             /* 상위50% 테이블 */
             .top50-table { font-size:11px !important; table-layout:fixed; width:100% !important; }
@@ -339,7 +331,6 @@
     </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('mangam','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
-        <button onclick="changeSubTab('mangam','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
         <button onclick="changeSubTab('mangam','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
         <button onclick="changeSubTab('mangam','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
         <button onclick="changeSubTab('mangam','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
@@ -439,7 +430,6 @@
     </div>
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('gamgyul','daily',this)" class="sub-btn bg-orange-500 text-white">📊 일일리포트</button>
-        <button onclick="changeSubTab('gamgyul','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
         <button onclick="changeSubTab('gamgyul','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
         <button onclick="changeSubTab('gamgyul','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
         <button onclick="changeSubTab('gamgyul','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
@@ -521,7 +511,6 @@
     <div class="sub-tab-bar mb-3 px-1">
         <button onclick="changeSubTab('hobak','report',this);renderReportTab()" class="sub-btn bg-orange-500 text-white">📑 리포트</button>
         <button onclick="changeSubTab('hobak','daily',this)" class="sub-btn bg-gray-100 text-gray-600">📊 일일리포트</button>
-        <button onclick="changeSubTab('hobak','top50',this)" class="sub-btn bg-gray-100 text-gray-600">⭐ 상위50%</button>
         <button onclick="changeSubTab('hobak','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
         <button onclick="changeSubTab('hobak','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
         <button onclick="changeSubTab('hobak','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
@@ -983,10 +972,11 @@ function renderDaily(containerId, data, dateLabel){
                     <span>⚖️ ${fmtT(Math.round(tot.wt))}</span>
                 </div>
             </div>
-            <table class="w-full text-xs daily-inner-table">
+            <div class="scroll-x"><table class="w-full text-xs daily-inner-table">
                 <thead><tr class="bg-orange-600 text-white">
                     <th class="py-2 px-2 text-left">규격</th>
                     <th class="py-2 px-2">평균가</th>
+                    <th class="py-2 px-2">상위50%</th>
                     <th class="py-2 px-2">kg단가</th>
                     <th class="py-2 px-2 hide-m">최고가</th>
                     <th class="py-2 px-2 hide-m">최저가</th>
@@ -997,9 +987,11 @@ function renderDaily(containerId, data, dateLabel){
         groups[v].forEach(r=>{
             const kgUnit = parseKg(r.규격);
             const kgPrice = kgUnit>0 && r.평균가 ? Math.round(r.평균가/kgUnit) : 0;
+            const diff50=(r.상위50평균가||0)-(r.평균가||0);
             html+=`<tr class="border-b border-orange-50 hover:bg-orange-50">
                 <td class="py-2 px-2 font-bold text-gray-700">${r.규격}</td>
                 <td class="py-2 px-2 text-center font-black text-red-500">${fmt(r.평균가)}원</td>
+                <td class="py-2 px-2 text-center"><span class="font-black text-green-600">${fmt(r.상위50평균가)}원</span>${diff50>0?`<span class="text-green-400 text-xs hide-m"> +${fmt(diff50)}</span>`:''}</td>
                 <td class="py-2 px-2 text-center text-orange-500 font-bold">${kgPrice>0?fmt(kgPrice)+'원':'—'}</td>
                 <td class="py-2 px-2 text-center text-red-400 hide-m">${fmt(r.최고가)}원</td>
                 <td class="py-2 px-2 text-center text-gray-400 hide-m">${fmt(r.최저가)}원</td>
@@ -1007,7 +999,7 @@ function renderDaily(containerId, data, dateLabel){
                 <td class="py-2 px-2 text-center text-gray-500 hide-m">${fmtT(r.총중량)}</td>
             </tr>`;
         });
-        html+=`</tbody></table></div>`;
+        html+=`</tbody></table></div></div>`;
     });
     html+='</div>';
     el.innerHTML=html;
