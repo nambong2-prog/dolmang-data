@@ -246,6 +246,10 @@
 .hm-q{display:block;font-size:9px;color:#9ca3af;font-weight:500}
 .hm-cq{display:block;font-size:9px;opacity:.8;font-weight:500}
 .hm-empty{color:#cbd5e1;background:#fafafa}
+.hm-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:12px}
+.hm-chips-lbl{font-size:11px;font-weight:700;color:#6b7280;margin-right:2px}
+.hm-chip{padding:4px 11px;border-radius:14px;font-size:11.5px;font-weight:700;border:1px solid #e5e7eb;background:#fff;color:#9ca3af;cursor:pointer}
+.hm-chip.on{background:#065f46;color:#fff;border-color:#065f46}
 </style>
 </head>
 <body>
@@ -1096,6 +1100,8 @@ function sortMkts(list){
 }
 function setMktSort(cat,key){ _mktSort=key; const md=_lastMarket[cat]; if(md) renderMarketTop6(cat+'-market-container', md); }
 let _heatMode='top50';
+let _heatSpecSel=null;   // 선택된 규격 (기본 3kg)
+function toggleHeatSpec(cat,spec,btn){ if(!_heatSpecSel) return; if(_heatSpecSel.has(spec)) _heatSpecSel.delete(spec); else _heatSpecSel.add(spec); if(_heatSpecSel.size===0) _heatSpecSel.add(spec); renderHeatmap(cat); }
 function _heatModeTxt(){ return _heatMode==='max'?'최고가':_heatMode==='avg'?'평균가':'상위50%'; }
 function _heatPrice(m){ return _heatMode==='max'?(m.최고가||0):_heatMode==='avg'?(m.평균가||0):(m.상위50평균가||0); }
 function setHeatMode(cat,mode,btn){ _heatMode=mode; document.querySelectorAll('#heat-mode-bar .hm-btn').forEach(b=>b.classList.remove('on')); if(btn) btn.classList.add('on'); renderHeatmap(cat); }
@@ -1106,10 +1112,13 @@ function renderHeatmap(cat){
     if(!mk.length){ el.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">데이터 없음</p>'; return; }
     const byVar={};
     mk.forEach(g=>{ const v=g.품종||g.품목||''; (byVar[v]=byVar[v]||[]).push(g); });
+    const allSpecs=[...new Set(mk.map(g=>g.규격))].sort((a,b)=>parseKg(a)-parseKg(b));
+    if(_heatSpecSel===null){ const def=allSpecs.filter(x=>x.indexOf('3kg')===0); _heatSpecSel=new Set(def.length?def:allSpecs); }
+    const chips='<div class="hm-chips"><span class="hm-chips-lbl">규격</span>'+allSpecs.map(x=>`<button class="hm-chip ${_heatSpecSel.has(x)?'on':''}" onclick="toggleHeatSpec('${cat}','${ea(x)}',this)">${x}</button>`).join('')+'</div>';
     let html='';
     Object.keys(byVar).sort().forEach(vr=>{
         const groups=byVar[vr];
-        const specs=[...new Set(groups.map(g=>g.규격))].sort((a,b)=>parseKg(a)-parseKg(b));
+        const specs=[...new Set(groups.map(g=>g.규격))].filter(x=>_heatSpecSel.has(x)).sort((a,b)=>parseKg(a)-parseKg(b));
         const cell={}, mktQty={}, prices=[];
         groups.forEach(g=>{ (g.시장목록||[]).forEach(m=>{
             const p=_heatPrice(m);
@@ -1138,7 +1147,7 @@ function renderHeatmap(cat){
         });
         html+='</tbody></table></div></div>';
     });
-    el.innerHTML=html || '<p class="py-8 text-gray-300 text-center text-sm">데이터 없음</p>';
+    el.innerHTML=chips + (html || '<p class="py-8 text-gray-300 text-center text-sm">선택한 규격 데이터가 없습니다</p>');
 }
 function renderMarketTop6(containerId,marketData){
     const el=document.getElementById(containerId);
