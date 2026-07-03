@@ -562,8 +562,8 @@
                 <h2 class="font-bold text-gray-800 text-sm">🗺️ 출하판단 <span class="text-xs text-gray-400 font-normal ml-1">시장×규격 경락가 히트맵 · 어디에 어떤 규격 보낼지</span></h2>
                 <div id="heat-mode-bar" class="flex gap-1">
                     <button class="hm-btn" onclick="setHeatMode('hobak','avg',this)">평균</button>
-                    <button class="hm-btn on" onclick="setHeatMode('hobak','top50',this)">상위50%</button>
-                    <button class="hm-btn" onclick="setHeatMode('hobak','max',this)">최고가</button>
+                    <button class="hm-btn" onclick="setHeatMode('hobak','top50',this)">상위50%</button>
+                    <button class="hm-btn on" onclick="setHeatMode('hobak','hi',this)">고가평균</button>
                 </div>
             </div>
             <div id="hobak-heatmap-body" class="p-3 space-y-4"></div>
@@ -1099,11 +1099,11 @@ function sortMkts(list){
     return [...list].sort((a,b)=>(b[key]||0)-(a[key]||0)).slice(0,6);
 }
 function setMktSort(cat,key){ _mktSort=key; const md=_lastMarket[cat]; if(md) renderMarketTop6(cat+'-market-container', md); }
-let _heatMode='top50';
+let _heatMode='hi';
 let _heatSpecSel=null;   // 선택된 규격 (기본 3kg)
 function toggleHeatSpec(cat,spec,btn){ if(!_heatSpecSel) return; if(_heatSpecSel.has(spec)) _heatSpecSel.delete(spec); else _heatSpecSel.add(spec); if(_heatSpecSel.size===0) _heatSpecSel.add(spec); renderHeatmap(cat); }
-function _heatModeTxt(){ return _heatMode==='max'?'최고가':_heatMode==='avg'?'평균가':'상위50%'; }
-function _heatPrice(m){ return _heatMode==='max'?(m.최고가||0):_heatMode==='avg'?(m.평균가||0):(m.상위50평균가||0); }
+function _heatModeTxt(){ return _heatMode==='max'?'최고가':_heatMode==='avg'?'평균가':_heatMode==='hi'?'고가평균':'상위50%'; }
+function _heatPrice(m){ return _heatMode==='max'?(m.최고가||0):_heatMode==='avg'?(m.평균가||0):_heatMode==='hi'?(m.고가평균||m.상위50평균가||0):(m.상위50평균가||0); }
 function setHeatMode(cat,mode,btn){ _heatMode=mode; document.querySelectorAll('#heat-mode-bar .hm-btn').forEach(b=>b.classList.remove('on')); if(btn) btn.classList.add('on'); renderHeatmap(cat); }
 function renderHeatmap(cat){
     const el=document.getElementById(cat+'-heatmap-body'); if(!el) return;
@@ -1122,7 +1122,7 @@ function renderHeatmap(cat){
         const cell={}, mktQty={}, prices=[];
         groups.forEach(g=>{ (g.시장목록||[]).forEach(m=>{
             const p=_heatPrice(m);
-            (cell[m.시장명]=cell[m.시장명]||{})[g.규격]={price:p,qty:m.거래량};
+            (cell[m.시장명]=cell[m.시장명]||{})[g.규격]={price:p,qty:m.거래량,thick:(m.두께||0)};
             mktQty[m.시장명]=(mktQty[m.시장명]||0)+(m.거래량||0);
             if(p>0) prices.push(p);
         }); });
@@ -1135,12 +1135,12 @@ function renderHeatmap(cat){
             const mb=Math.max(...specs.map(x=>cell[b][x]?cell[b][x].price:0));
             return mb-ma;
         });
-        html+='<div class="hm-card"><div class="hm-title">'+vr+' <span class="hm-sub">'+mkts.length+'개 시장 · '+specs.length+'개 규격 · '+_heatModeTxt()+' 경락가 · 색 진할수록 高</span></div><div class="scroll-x"><table class="hm-table"><thead><tr><th class="hm-mk">시장</th>'+specs.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>';
+        html+='<div class="hm-card"><div class="hm-title">'+vr+' <span class="hm-sub">'+mkts.length+'개 시장 · '+specs.length+'개 규격 · '+_heatModeTxt()+' · 색 진할수록 高 · 고가%=최고가 근처 물량비중</span></div><div class="scroll-x"><table class="hm-table"><thead><tr><th class="hm-mk">시장</th>'+specs.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>';
         mkts.forEach(name=>{
             html+='<tr><td class="hm-mk">'+name+'<span class="hm-q">'+fmt(mktQty[name])+'박스</span></td>';
             specs.forEach(x=>{
                 const c=cell[name][x];
-                if(c&&c.price>0){ html+='<td style="background:'+bg(c.price)+';color:'+fg(c.price)+'"><b>'+fmt(c.price)+'</b><span class="hm-cq">'+fmt(c.qty)+'박스</span></td>'; }
+                if(c&&c.price>0){ html+='<td style="background:'+bg(c.price)+';color:'+fg(c.price)+'"><b>'+fmt(c.price)+'</b><span class="hm-cq">'+fmt(c.qty)+'박스 · 고가'+c.thick+'%</span></td>'; }
                 else { html+='<td class="hm-empty">–</td>'; }
             });
             html+='</tr>';
@@ -1889,7 +1889,14 @@ function buildMarket(rows){
             const corps=Object.entries(cg).map(([cp,cr])=>{ const cs=aggStat(cr);
                 return { 법인:cp, 상위50평균가:cs.top50, 평균가:cs.avg, 최고가:cs.max, 총거래량:cs.qty }; })
                 .sort((a,b)=>b.상위50평균가-a.상위50평균가);
-            return { 시장명:mk, 상위50평균가:st.top50, 평균가:st.avg, 최고가:st.max, 거래량:st.qty, 법인목록:corps };
+            const _srt=[...mrows].sort((a,b)=>b.경락가-a.경락가);
+            const _totQ=mrows.reduce((x,r)=>x+(r.거래량||0),0);
+            let _acc=0,_hiSum=0,_hiQ=0;
+            for(const r of _srt){ if(_acc>=_totQ*0.2 && _hiQ>0) break; _hiSum+=r.경락가*(r.거래량||0); _hiQ+=(r.거래량||0); _acc+=(r.거래량||0); }
+            const 고가평균 = _hiQ? Math.round(_hiSum/_hiQ) : st.avg;
+            const _nearQ = mrows.filter(r=>r.경락가>=st.max*0.95).reduce((x,r)=>x+(r.거래량||0),0);
+            const 두께 = _totQ? Math.round(_nearQ/_totQ*100) : 0;
+            return { 시장명:mk, 상위50평균가:st.top50, 평균가:st.avg, 최고가:st.max, 고가평균:고가평균, 두께:두께, 거래량:st.qty, 법인목록:corps };
         }).sort((a,b)=>b.상위50평균가-a.상위50평균가);
         return { 품목:arr[0].품목, 품종:v, 규격:spec, 시장목록:markets };
     });
