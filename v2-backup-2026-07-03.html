@@ -230,22 +230,6 @@
 .period-bar .pm-label{font-size:12px;color:#9ca3af;font-weight:700;margin-left:2px}
 @media(max-width:639px){ .period-bar{gap:5px} .period-bar .pm-btn{padding:6px 10px;font-size:11px} .period-bar input[type=date]{font-size:12px;padding:5px 6px} .period-bar .pm-label{width:100%;margin-left:0} }
 
-
-/* ===== 출하판단 히트맵 ===== */
-.hm-btn{padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer}
-.hm-btn.on{background:#c2410c;color:#fff;border-color:#c2410c}
-.hm-card{border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin-bottom:4px}
-.hm-title{background:#f8fafc;padding:9px 12px;font-weight:800;font-size:13px;color:#111827;border-bottom:1px solid #eef2f7}
-.hm-title .hm-sub{font-weight:600;font-size:11px;color:#9ca3af;margin-left:4px}
-.hm-table{border-collapse:collapse;width:auto;min-width:100%;font-size:11.5px}
-.hm-table th{background:#374151;color:#fff;padding:7px 9px;white-space:nowrap}
-.hm-table th.hm-mk{text-align:left;position:sticky;left:0;z-index:1}
-.hm-table td{padding:6px 9px;text-align:center;white-space:nowrap;border-bottom:1px solid #f1f5f9;font-variant-numeric:tabular-nums}
-.hm-table td.hm-mk{text-align:left;font-weight:700;color:#374151;background:#fff;position:sticky;left:0}
-.hm-table td b{font-weight:800}
-.hm-q{display:block;font-size:9px;color:#9ca3af;font-weight:500}
-.hm-cq{display:block;font-size:9px;opacity:.8;font-weight:500}
-.hm-empty{color:#cbd5e1;background:#fafafa}
 </style>
 </head>
 <body>
@@ -528,7 +512,6 @@
         <button onclick="changeSubTab('hobak','report',this);renderReportTab()" class="sub-btn bg-orange-500 text-white">📑 리포트</button>
         <button onclick="changeSubTab('hobak','daily',this)" class="sub-btn bg-gray-100 text-gray-600">📊 일일리포트</button>
         <button onclick="changeSubTab('hobak','market',this)" class="sub-btn bg-gray-100 text-gray-600">🏪 시장TOP6</button>
-        <button onclick="changeSubTab('hobak','heatmap',this);renderHeatmap('hobak')" class="sub-btn bg-gray-100 text-gray-600">🗺️ 출하판단</button>
         <button onclick="changeSubTab('hobak','trend',this)" class="sub-btn bg-blue-50 text-blue-700">📈 가격추이</button>
         <button onclick="changeSubTab('hobak','jungga',this)" class="sub-btn purple-btn bg-purple-50 text-purple-700">📋 정가수의</button>
         <button onclick="changeSubTab('hobak','total',this)" class="sub-btn bg-gray-100 text-gray-600">📋 전체내역</button>
@@ -551,19 +534,6 @@
     <div id="hobak-market" class="sub-tab-content">
         <div class="card"><div class="px-4 py-3 border-b border-gray-100"><h2 class="font-bold text-gray-800 text-sm">🏪 규격별 시장 TOP6</h2></div>
         <div id="hobak-market-container" class="p-3 space-y-5"></div></div>
-    </div>
-    <div id="hobak-heatmap" class="sub-tab-content">
-        <div class="card">
-            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-                <h2 class="font-bold text-gray-800 text-sm">🗺️ 출하판단 <span class="text-xs text-gray-400 font-normal ml-1">시장×규격 경락가 히트맵 · 어디에 어떤 규격 보낼지</span></h2>
-                <div id="heat-mode-bar" class="flex gap-1">
-                    <button class="hm-btn" onclick="setHeatMode('hobak','avg',this)">평균</button>
-                    <button class="hm-btn on" onclick="setHeatMode('hobak','top50',this)">상위50%</button>
-                    <button class="hm-btn" onclick="setHeatMode('hobak','max',this)">최고가</button>
-                </div>
-            </div>
-            <div id="hobak-heatmap-body" class="p-3 space-y-4"></div>
-        </div>
     </div>
     <div id="hobak-trend" class="sub-tab-content">
         <div class="card">
@@ -1095,51 +1065,6 @@ function sortMkts(list){
     return [...list].sort((a,b)=>(b[key]||0)-(a[key]||0)).slice(0,6);
 }
 function setMktSort(cat,key){ _mktSort=key; const md=_lastMarket[cat]; if(md) renderMarketTop6(cat+'-market-container', md); }
-let _heatMode='top50';
-function _heatModeTxt(){ return _heatMode==='max'?'최고가':_heatMode==='avg'?'평균가':'상위50%'; }
-function _heatPrice(m){ return _heatMode==='max'?(m.최고가||0):_heatMode==='avg'?(m.평균가||0):(m.상위50평균가||0); }
-function setHeatMode(cat,mode,btn){ _heatMode=mode; document.querySelectorAll('#heat-mode-bar .hm-btn').forEach(b=>b.classList.remove('on')); if(btn) btn.classList.add('on'); renderHeatmap(cat); }
-function renderHeatmap(cat){
-    const el=document.getElementById(cat+'-heatmap-body'); if(!el) return;
-    const stat=(window._currentStats||{})[cat];
-    const mk=(stat&&stat.auction&&stat.auction.market_top6)||[];
-    if(!mk.length){ el.innerHTML='<p class="py-8 text-gray-300 text-center text-sm">데이터 없음</p>'; return; }
-    const byVar={};
-    mk.forEach(g=>{ const v=g.품종||g.품목||''; (byVar[v]=byVar[v]||[]).push(g); });
-    let html='';
-    Object.keys(byVar).sort().forEach(vr=>{
-        const groups=byVar[vr];
-        const specs=[...new Set(groups.map(g=>g.규격))].sort((a,b)=>parseKg(a)-parseKg(b));
-        const cell={}, mktQty={}, prices=[];
-        groups.forEach(g=>{ (g.시장목록||[]).forEach(m=>{
-            const p=_heatPrice(m);
-            (cell[m.시장명]=cell[m.시장명]||{})[g.규격]={price:p,qty:m.거래량};
-            mktQty[m.시장명]=(mktQty[m.시장명]||0)+(m.거래량||0);
-            if(p>0) prices.push(p);
-        }); });
-        if(!prices.length) return;
-        const pmin=Math.min(...prices), pmax=Math.max(...prices);
-        const bg=p=>{ if(!p) return '#f8fafc'; const t=pmax>pmin?(p-pmin)/(pmax-pmin):1; return 'hsl(145,58%,'+(95-Math.round(t*52))+'%)'; };
-        const fg=p=>{ if(!p) return '#cbd5e1'; const t=pmax>pmin?(p-pmin)/(pmax-pmin):1; return t>0.55?'#ffffff':'#065f46'; };
-        const mkts=Object.keys(cell).sort((a,b)=>{
-            const ma=Math.max(...specs.map(x=>cell[a][x]?cell[a][x].price:0));
-            const mb=Math.max(...specs.map(x=>cell[b][x]?cell[b][x].price:0));
-            return mb-ma;
-        });
-        html+='<div class="hm-card"><div class="hm-title">'+vr+' <span class="hm-sub">'+mkts.length+'개 시장 · '+specs.length+'개 규격 · '+_heatModeTxt()+' 경락가 · 색 진할수록 高</span></div><div class="scroll-x"><table class="hm-table"><thead><tr><th class="hm-mk">시장</th>'+specs.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>';
-        mkts.forEach(name=>{
-            html+='<tr><td class="hm-mk">'+name+'<span class="hm-q">'+fmt(mktQty[name])+'박스</span></td>';
-            specs.forEach(x=>{
-                const c=cell[name][x];
-                if(c&&c.price>0){ html+='<td style="background:'+bg(c.price)+';color:'+fg(c.price)+'"><b>'+fmt(c.price)+'</b><span class="hm-cq">'+fmt(c.qty)+'박스</span></td>'; }
-                else { html+='<td class="hm-empty">–</td>'; }
-            });
-            html+='</tr>';
-        });
-        html+='</tbody></table></div></div>';
-    });
-    el.innerHTML=html || '<p class="py-8 text-gray-300 text-center text-sm">데이터 없음</p>';
-}
 function renderMarketTop6(containerId,marketData){
     const el=document.getElementById(containerId);
     const _cat=containerId.split('-')[0];
@@ -2364,7 +2289,6 @@ function applyPeriod(cat){
     renderDaily(cat+'-daily-container', stat.auction.daily_report);
     renderTop50(cat+'-top50-container', stat.auction.daily_report);
     renderMarketTop6(cat+'-market-container', stat.auction.market_top6);
-    if(document.getElementById(cat+'-heatmap-body')) renderHeatmap(cat);
     renderJungga(cat+'-jungga-container', stat.jungga.daily_report, stat.jungga.total_history);
     buildFilters(cat, stat.auction.total_history);
     const lab=document.getElementById(cat+'-period-label');
