@@ -246,6 +246,22 @@
 .hm-q{display:block;font-size:9px;color:#9ca3af;font-weight:500}
 .hm-cq{display:block;font-size:9px;opacity:.8;font-weight:500}
 .hm-empty{color:#cbd5e1;background:#fafafa}
+.hm-alloc{border:1px solid #fed7aa;background:#fff7ed;border-radius:12px;margin:0 12px 4px;padding:10px 12px}
+.hm-alloc-top{font-weight:800;font-size:13px;color:#9a3412;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hm-alloc-ctl{font-weight:600;font-size:12px;color:#6b7280}
+.hm-alloc-ctl input{width:62px;border:1px solid #d1d5db;border-radius:8px;padding:4px 6px;font-size:13px;text-align:right}
+.hm-alloc-ctl select{border:1px solid #d1d5db;border-radius:8px;padding:4px 6px;font-size:13px;background:#fff}
+.hm-alloc-sum{font-size:12px;color:#374151;margin:9px 0 6px}
+.hm-alloc-sum b{color:#c2410c}
+.hm-alloc-warn{color:#dc2626;font-weight:700}
+.hm-alloc-rows{display:flex;flex-direction:column;gap:3px}
+.hm-alloc-row{display:flex;align-items:center;gap:8px;font-size:12.5px;background:#fff;border:1px solid #fde4c8;border-radius:8px;padding:5px 8px}
+.ar-rank{width:18px;height:18px;background:#c2410c;color:#fff;border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ar-mk{font-weight:700;color:#374151;flex:1}
+.ar-give{font-weight:800;color:#c2410c}
+.ar-price{color:#065f46;font-weight:700}
+.ar-thick{color:#9ca3af;font-size:11px}
+.hm-alloc-empty{font-size:12px;color:#9ca3af;padding:6px 0}
 .hm-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:12px}
 .hm-chips-lbl{font-size:11px;font-weight:700;color:#6b7280;margin-right:2px}
 .hm-chip{padding:4px 11px;border-radius:14px;font-size:11.5px;font-weight:700;border:1px solid #e5e7eb;background:#fff;color:#9ca3af;cursor:pointer}
@@ -565,6 +581,10 @@
                     <button class="hm-btn" onclick="setHeatMode('hobak','top50',this)">상위50%</button>
                     <button class="hm-btn on" onclick="setHeatMode('hobak','hi',this)">고가평균</button>
                 </div>
+            </div>
+            <div id="alloc-panel" class="hm-alloc">
+                <div class="hm-alloc-top">📦 추천 배분 <span class="hm-alloc-ctl">물량 <input id="alloc-qty" type="number" value="240" min="1" oninput="renderAlloc('hobak')"> 박스 · <select id="alloc-spec" onchange="renderAlloc('hobak')"></select></span></div>
+                <div id="alloc-result" class="hm-alloc-body"></div>
             </div>
             <div id="hobak-heatmap-body" class="p-3 space-y-4"></div>
         </div>
@@ -1140,7 +1160,7 @@ function renderHeatmap(cat){
             html+='<tr><td class="hm-mk">'+name+'<span class="hm-q">'+fmt(mktQty[name])+'박스</span></td>';
             specs.forEach(x=>{
                 const c=cell[name][x];
-                if(c&&c.price>0){ html+='<td style="background:'+bg(c.price)+';color:'+fg(c.price)+'"><b>'+fmt(c.price)+'</b><span class="hm-cq">'+fmt(c.qty)+'박스 · 고가'+c.thick+'%</span></td>'; }
+                if(c&&c.price>0){ const _dim=(c.thick<15)?'opacity:.45;':''; const _warn=(c.qty<240)?'⚠':''; html+='<td style="'+_dim+'background:'+bg(c.price)+';color:'+fg(c.price)+'"><b>'+fmt(c.price)+'</b><span class="hm-cq">'+_warn+fmt(c.qty)+'박스 · 고가'+c.thick+'%</span></td>'; }
                 else { html+='<td class="hm-empty">–</td>'; }
             });
             html+='</tr>';
@@ -1148,6 +1168,37 @@ function renderHeatmap(cat){
         html+='</tbody></table></div></div>';
     });
     el.innerHTML=chips + (html || '<p class="py-8 text-gray-300 text-center text-sm">선택한 규격 데이터가 없습니다</p>');
+    syncAllocSpec(cat); renderAlloc(cat);
+}
+function syncAllocSpec(cat){
+    const sel=document.getElementById('alloc-spec'); if(!sel) return;
+    const mk=((window._currentStats||{})[cat]||{}).auction?.market_top6||[];
+    const opts=mk.map(g=>({v:(g.품종||g.품목||'')+'|'+g.규격, l:(g.품종||g.품목||'')+' '+g.규격, q:(g.시장목록||[]).reduce((x,m)=>x+(m.거래량||0),0)}));
+    opts.sort((a,b)=>{ const a3=a.l.indexOf('3kg')>=0?0:1, b3=b.l.indexOf('3kg')>=0?0:1; return a3-b3 || b.q-a.q; });
+    const prev=sel.value;
+    sel.innerHTML=opts.map(o=>`<option value="${o.v}">${o.l}</option>`).join('');
+    if(opts.some(o=>o.v===prev)) sel.value=prev; else if(opts.length) sel.value=opts[0].v;
+}
+function renderAlloc(cat){
+    const res=document.getElementById('alloc-result'); if(!res) return;
+    const sel=document.getElementById('alloc-spec'), qtyEl=document.getElementById('alloc-qty');
+    const key=sel?sel.value:''; const qty=Math.max(1, Math.round(+((qtyEl||{}).value)||240));
+    const mk=((window._currentStats||{})[cat]||{}).auction?.market_top6||[];
+    const parts=key.split('|'); const vr=parts[0], spec=parts[1];
+    const g=mk.find(x=>((x.품종||x.품목)===vr)&&x.규격===spec);
+    if(!g){ res.innerHTML='<div class="hm-alloc-empty">규격을 선택하세요</div>'; return; }
+    const mkts=(g.시장목록||[]).filter(m=>(m.거래량||0)>0).map(m=>({name:m.시장명, price:(m.고가평균||m.상위50평균가||0), cap:m.거래량, thick:(m.두께||0)}));
+    const ok=mkts.filter(m=>m.thick>=8).sort((a,b)=>b.price-a.price);
+    const rest=mkts.filter(m=>m.thick<8).sort((a,b)=>b.price-a.price);
+    const order=ok.concat(rest);
+    let remain=qty; const plan=[];
+    for(const m of order){ if(remain<=0) break; const give=Math.min(remain, m.cap); if(give<=0) continue; plan.push(Object.assign({},m,{give})); remain-=give; }
+    if(!plan.length){ res.innerHTML='<div class="hm-alloc-empty">배분할 시장이 없습니다</div>'; return; }
+    const tot=plan.reduce((x,p)=>x+p.give,0), rev=plan.reduce((x,p)=>x+p.give*p.price,0), wavg=tot?Math.round(rev/tot):0;
+    let html='<div class="hm-alloc-sum">'+vr+' '+spec+' · 배정 '+fmt(tot)+'/'+fmt(qty)+'박스 · 가중평균 <b>'+fmt(wavg)+'원</b> · 예상 <b>'+fmt(rev)+'원</b>'+(remain>0?' <span class="hm-alloc-warn">· 남은 '+fmt(remain)+'박스 소화력부족</span>':'')+'</div><div class="hm-alloc-rows">';
+    plan.forEach((p,i)=>{ html+='<div class="hm-alloc-row"><span class="ar-rank">'+(i+1)+'</span><span class="ar-mk">'+p.name+'</span><span class="ar-give">'+fmt(p.give)+'박스</span><span class="ar-price">'+fmt(p.price)+'원</span><span class="ar-thick">고가'+p.thick+'%</span></div>'; });
+    html+='</div>';
+    res.innerHTML=html;
 }
 function renderMarketTop6(containerId,marketData){
     const el=document.getElementById(containerId);
