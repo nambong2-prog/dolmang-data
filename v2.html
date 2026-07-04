@@ -2103,7 +2103,7 @@ function serialize(){
             const e=DB[cat][d];
             // 압축 없이 원본(전건) 그대로 보관. 단, 과거에 이미 요약만 남은 날짜는 요약 유지
             if((e.total&&e.total.length) || (e.jtotal&&e.jtotal.length) || !e.archived){
-                out.cats[cat].days[d]={ total:e.total||[], jtotal:e.jtotal||[] };
+                out.cats[cat].days[d]={ total:e.total||[], jtotal:e.jtotal||[], src:e.src||'manual' };
             } else {
                 out.cats[cat].days[d]={ archived:true, daily:e.daily||[], market:e.market||[], trend:e.trend||[] };
             }
@@ -2117,8 +2117,8 @@ function loadDB(json){
     CATS.forEach(cat=>{
         const days=(json.cats[cat]||{}).days||{};
         Object.entries(days).forEach(([d,e])=>{
-            if(e.archived){ DB[cat][d]={ archived:true, daily:e.daily||[], market:e.market||[], trend:e.trend||[], jdaily:[], total:[], jtotal:[] }; }
-            else { const entry={ archived:false, total:e.total||[], jtotal:e.jtotal||[] }; deriveDate(entry); DB[cat][d]=entry; }
+            if(e.archived){ DB[cat][d]={ archived:true, daily:e.daily||[], market:e.market||[], trend:e.trend||[], jdaily:[], total:[], jtotal:[], src:e.src||'manual' }; }
+            else { const entry={ archived:false, total:e.total||[], jtotal:e.jtotal||[], src:e.src||'manual' }; deriveDate(entry); DB[cat][d]=entry; }
         });
     });
     if(json.updated) lastUpdate=json.updated.slice(0,10);
@@ -2134,8 +2134,10 @@ async function loadFromGitHub(){
         else { loadDB(null); }   // 404 등 → 빈 상태
     }catch(e){ console.warn('load fail', e); loadDB(null); }
     const _cleaned = cleanupHobak();
+    let _synced={added:0};
+    try{ _synced = await autoSyncFromScraper(); }catch(e){ console.warn('autosync fail',e); }
     rebuildAll();
-    if(_cleaned && getToken()){ commitToGitHub().catch(()=>{}); }   // 잘못 들어간 호박 자동 정리 후 깃허브 갱신
+    if((_cleaned || (_synced&&_synced.added>0)) && getToken()){ commitToGitHub().catch(()=>{}); }   // 자동정리/자동수집 반영분 깃허브 저장
 }
 const b64 = str => btoa(unescape(encodeURIComponent(str)));
 async function commitToGitHub(){
@@ -2155,6 +2157,44 @@ async function commitToGitHub(){
         let msg=p.status+''; try{ msg+=' '+((await p.json()).message||''); }catch(e){}
         return { ok:false, reason:msg };
     }catch(e){ return { ok:false, reason:String(e).slice(0,120) }; }
+}
+
+/* ---------- 자동수집 연결 (스크래퍼 data.json → v2) ---------- */
+const SCRAPER_URL = `https://raw.githubusercontent.com/${GH.owner}/${GH.repo}/${GH.branch}/data.json`;
+async function autoSyncFromScraper(){
+    let d;
+    try{
+        const res=await fetch(SCRAPER_URL+'?t='+Date.now(),{cache:'no-store'});
+        if(!res.ok) return { ok:false, added:0, reason:'http'+res.status };
+        d=await res.json();
+    }catch(e){ return { ok:false, added:0, reason:String(e).slice(0,80) }; }
+    const raw=[];
+    const pull=node=>{ if(!node) return; ['auction','jungga'].forEach(k=>{ const th=(node[k]&&node[k].total_history)||[]; th.forEach(r=>raw.push(r)); }); };
+    pull(d.mangam); pull(d.gamgyul); pull(d.hobak);
+    if(!raw.length) return { ok:true, added:0, when:d.update_time };
+    const utDate=String(d.update_time||'').slice(0,10);
+    const conv=raw.map(r=>({
+        date:(String(r.낙찰일시||'').slice(0,10))||utDate,
+        낙찰일시:String(r.낙찰일시||''),
+        도매시장:String(r.도매시장||''),
+        법인:String(r.법인||''),
+        매매구분:String(r.매매방법||''),
+        품목:String(r.품목||''),
+        품종:String(r.품종||''),
+        원산지:String(r.원산지||''),
+        규격:String(r.규격||''),
+        거래량:N(r.거래량),
+        경락가:N(r.경락가)
+    }));
+    // 수동 업로드한 날짜(src=manual)는 자동수집이 덮어쓰지 않음
+    const filtered=conv.filter(r=>{
+        const cat=categoryOf(r); if(!cat) return false;
+        const e=DB[cat] && DB[cat][r.date];
+        return !(e && e.src==='manual');
+    });
+    if(!filtered.length) return { ok:true, added:0, when:d.update_time };
+    const res=ingestRows(filtered,'auto');
+    return { ok:true, added:res.added, when:d.update_time };
 }
 
 /* ---------- 엑셀 파싱 ---------- */
@@ -2189,7 +2229,7 @@ function normalizeRows(matrix){
 }
 const rowKey = r => [r.낙찰일시,r.도매시장,r.법인,r.규격,r.경락가,r.거래량].join('|');
 
-function ingestRows(allRows){
+function ingestRows(allRows, srcTag){
     let added=0, skipped=0; const touched={};
     allRows.forEach(r=>{
         const cat=categoryOf(r); if(!cat){ skipped++; return; }
@@ -2206,7 +2246,7 @@ function ingestRows(allRows){
         (touched[cat]=touched[cat]||new Set()).add(d);
         if(d!=='미상' && d>lastUpdate) lastUpdate=d;
     });
-    Object.entries(touched).forEach(([cat,ds])=>ds.forEach(d=>deriveDate(DB[cat][d])));
+    Object.entries(touched).forEach(([cat,ds])=>ds.forEach(d=>{ deriveDate(DB[cat][d]); if(srcTag) DB[cat][d].src=srcTag; }));
     return { added, skipped };
 }
 
@@ -2230,7 +2270,7 @@ function handleFiles(fileList){
     });
 }
 async function finishIngest(allRows,names,log){
-    const res=ingestRows(allRows);
+    const res=ingestRows(allRows,'manual');
     rebuildAll();
     const fileList=names.map(n=>'• '+n).join('<br>');
     if(getToken()){
