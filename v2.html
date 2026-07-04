@@ -266,6 +266,41 @@
 .hm-chips-lbl{font-size:11px;font-weight:700;color:#6b7280;margin-right:2px}
 .hm-chip{padding:4px 11px;border-radius:14px;font-size:11.5px;font-weight:700;border:1px solid #e5e7eb;background:#fff;color:#9ca3af;cursor:pointer}
 .hm-chip.on{background:#065f46;color:#fff;border-color:#065f46}
+/* ===== 리포트 결정 페이지 ===== */
+.rp-datehdr{font-size:12px;color:#6b7280;font-weight:700;margin-bottom:10px}
+.rp-datehdr b{color:#c2410c}
+.rp-band{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:14px}
+.rp-bcard{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px}
+.rp-bname{font-size:13px;font-weight:800;color:#111827}
+.rp-bname span{font-size:11px;color:#9ca3af;font-weight:600}
+.rp-bprice{font-size:26px;font-weight:900;color:#c2410c;margin:2px 0}
+.rp-bprice u{font-size:13px;color:#9ca3af;text-decoration:none;font-weight:700}
+.rp-bdelta{font-size:12px;color:#6b7280;font-weight:600}
+.rp-bvol{font-size:11px;color:#9ca3af;margin-top:3px}
+.rp-up{color:#dc2626;font-weight:800}
+.rp-down{color:#2563eb;font-weight:800}
+.rp-flat{color:#9ca3af;font-weight:700}
+.rp-sec{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.rp-h{font-size:13px;font-weight:800;color:#111827;margin-bottom:10px}
+.rp-h span{font-size:11px;color:#9ca3af;font-weight:600;margin-left:4px}
+.rp-chart{position:relative;height:240px}
+.rp-mv{font-size:12px;font-weight:800;color:#065f46;margin:8px 0 5px}
+.rp-mrows{display:flex;flex-direction:column;gap:4px}
+.rp-mrow{display:grid;grid-template-columns:98px 1fr auto auto;gap:8px;align-items:center;font-size:12px}
+.rp-mk{font-weight:700;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-mbar{height:8px;background:#f1f5f9;border-radius:5px;overflow:hidden}
+.rp-mbar i{display:block;height:100%;background:linear-gradient(90deg,#34d399,#059669);border-radius:5px}
+.rp-mp{font-weight:800;color:#065f46;white-space:nowrap}
+.rp-mt{font-size:10px;color:#9ca3af;white-space:nowrap}
+.rp-warn{color:#dc2626;font-weight:700}
+.rp-alloc{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px 11px;margin-bottom:8px}
+.rp-av{font-size:12.5px;color:#9a3412;font-weight:700;margin-bottom:6px}
+.rp-av b{color:#c2410c}
+.rp-achips{display:flex;flex-wrap:wrap;gap:5px}
+.rp-achip{background:#fff;border:1px solid #fde4c8;border-radius:14px;padding:3px 9px;font-size:11.5px;font-weight:700;color:#374151}
+.rp-achip b{background:#c2410c;color:#fff;border-radius:50%;padding:0 5px;font-size:10px;margin-right:3px}
+@media(max-width:639px){ .rp-mrow{grid-template-columns:78px 1fr auto} .rp-mt{display:none} .rp-chart{height:200px} }
+
 </style>
 </head>
 <body>
@@ -1200,6 +1235,77 @@ function renderAlloc(cat){
     html+='</div>';
     res.innerHTML=html;
 }
+let _repChart=null;
+function _rp3(sp){ return String(sp||'').indexOf('3kg')===0; }
+function _rpDay(cat,date){
+    const e=DB[cat]&&DB[cat][date]; const dr=(e&&e.daily)||[]; const o={};
+    dr.forEach(r=>{ if(!_rp3(r.규격)) return; const v=r.품종||r.품목||''; if(!o[v]) o[v]={pv:0,vol:0}; o[v].pv+=r.평균가*r.총거래량; o[v].vol+=r.총거래량; });
+    const res={}; for(const v in o){ res[v]={price:o[v].vol?Math.round(o[v].pv/o[v].vol):0, vol:o[v].vol}; } return res;
+}
+function _rpDelta(cur,base){
+    if(base==null||base===0||cur===0) return '<span class="rp-flat">–</span>';
+    const d=cur-base; if(d===0) return '<span class="rp-flat">→</span>';
+    const up=d>0; return '<span class="'+(up?'rp-up':'rp-down')+'">'+(up?'▲':'▼')+fmt(Math.abs(d))+'</span>';
+}
+function _rp3kMarkets(cat,date,v){
+    const mkt=(DB[cat]&&DB[cat][date]&&DB[cat][date].market)||[]; const bym={};
+    mkt.forEach(g=>{ if((g.품종||g.품목)!==v||!_rp3(g.규격)) return; (g.시장목록||[]).forEach(m=>{
+        const k=m.시장명; if(!bym[k]) bym[k]={시장명:k,pv:0,vol:0,tw:0};
+        const pr=(m.고가평균||m.상위50평균가||0); bym[k].pv+=pr*m.거래량; bym[k].vol+=m.거래량; bym[k].tw+=(m.두께||0)*m.거래량;
+    }); });
+    return Object.values(bym).map(x=>({시장명:x.시장명, price:x.vol?Math.round(x.pv/x.vol):0, vol:x.vol, thick:x.vol?Math.round(x.tw/x.vol):0})).sort((a,b)=>b.price-a.price);
+}
+function renderReportPage(cat, anchor){
+    const body=document.getElementById('report-body'); if(!body) return;
+    if(_repChart){ try{_repChart.destroy();}catch(e){} _repChart=null; }
+    const all=reportDatesAll(cat);
+    if(!all.length){ body.innerHTML='<div class="r-empty">데이터가 없습니다 · PC에서 엑셀을 업로드하세요</div>'; return; }
+    const today=(anchor&&all.indexOf(anchor)>=0)?anchor:all[all.length-1];
+    const ti=all.indexOf(today);
+    const prev=ti>0?all[ti-1]:null;
+    const wkT=addDays(today,-7);
+    const weekAgo=all.filter(d=>d<=wkT).pop()||null;
+    const td=_rpDay(cat,today), pd=prev?_rpDay(cat,prev):{}, wd=weekAgo?_rpDay(cat,weekAgo):{};
+    let vars=Object.keys(td);
+    const pref=['단호박','미니밤호박']; vars.sort((a,b)=>((pref.indexOf(a)<0?9:pref.indexOf(a))-(pref.indexOf(b)<0?9:pref.indexOf(b)))||a.localeCompare(b));
+    if(!vars.length){ body.innerHTML='<div class="r-empty">'+today+' 기준 3kg 데이터가 없습니다</div>'; return; }
+    let A='<div class="rp-datehdr">📅 기준일 <b>'+today+'</b> · 전일 '+(prev||'-')+' · 전주(7일전) '+(weekAgo||'-')+'</div><div class="rp-band">';
+    vars.forEach(v=>{ const p=td[v].price;
+        A+='<div class="rp-bcard"><div class="rp-bname">'+v+' <span>3kg</span></div><div class="rp-bprice">'+fmt(p)+'<u>원</u></div><div class="rp-bdelta">전일 '+_rpDelta(p, pd[v]?pd[v].price:null)+' · 전주 '+_rpDelta(p, wd[v]?wd[v].price:null)+'</div><div class="rp-bvol">오늘 '+fmt(td[v].vol)+'박스</div></div>';
+    });
+    A+='</div>';
+    const B='<div class="rp-sec"><div class="rp-h">📈 3kg 가격·거래량 추이 <span>최근 30일 · 선=가격, 막대=거래량</span></div><div class="rp-chart"><canvas id="rep-trend-chart"></canvas></div></div>';
+    let C='<div class="rp-sec"><div class="rp-h">🏪 시장별 경락가 <span>3kg · '+today+' · 고가평균 순 (⚠=240 미만)</span></div>';
+    vars.forEach(v=>{ const list=_rp3kMarkets(cat,today,v); if(!list.length) return;
+        const mx=list[0].price, mn=Math.min.apply(null,list.map(x=>x.price));
+        C+='<div class="rp-mv">'+v+'</div><div class="rp-mrows">';
+        list.forEach((m,i)=>{ const w=Math.max(10,Math.round((m.price-mn*0.9)/((mx-mn*0.9)||1)*100)); const warn=m.vol<240?'<span class="rp-warn"> ⚠</span>':'';
+            C+='<div class="rp-mrow"><span class="rp-mk">'+(i+1)+'. '+m.시장명+'</span><span class="rp-mbar"><i style="width:'+w+'%"></i></span><span class="rp-mp">'+fmt(m.price)+'원</span><span class="rp-mt">고가'+m.thick+'%·'+fmt(m.vol)+'박스'+warn+'</span></div>';
+        });
+        C+='</div>';
+    });
+    C+='</div>';
+    let D='<div class="rp-sec"><div class="rp-h">📦 출하판단 <span>3kg 240박스(1파레트) 추천 배분</span></div>';
+    vars.forEach(v=>{ const cand=_rp3kMarkets(cat,today,v).map(m=>({name:m.시장명,price:m.price,cap:m.vol,thick:m.thick}));
+        if(!cand.length) return;
+        const ok=cand.filter(c=>c.thick>=8), rest=cand.filter(c=>c.thick<8); const order=ok.concat(rest);
+        let remain=240, plan=[];
+        for(const c of order){ if(remain<=0) break; const g=Math.min(remain,c.cap); if(g<=0) continue; plan.push({name:c.name,give:g,price:c.price}); remain-=g; }
+        if(!plan.length) return;
+        const tot=plan.reduce((s,p)=>s+p.give,0), rev=plan.reduce((s,p)=>s+p.give*p.price,0), wa=tot?Math.round(rev/tot):0;
+        D+='<div class="rp-alloc"><div class="rp-av">'+v+' 240박스 → 가중 <b>'+fmt(wa)+'원</b> · 예상 <b>'+fmt(rev)+'원</b>'+(remain>0?' <span class="rp-warn">남은 '+fmt(remain)+'박스 소화력부족</span>':'')+'</div><div class="rp-achips">'+plan.map((p,i)=>'<span class="rp-achip"><b>'+(i+1)+'</b> '+p.name+' '+fmt(p.give)+'박스</span>').join('')+'</div></div>';
+    });
+    D+='</div>';
+    body.innerHTML=A+B+C+D;
+    const d30=all.slice(Math.max(0,ti-29), ti+1);
+    const series={}; vars.forEach(v=>series[v]=[]); const volT=[];
+    d30.forEach(d=>{ const dp=_rpDay(cat,d); let vt=0; vars.forEach(v=>{ series[v].push(dp[v]?dp[v].price:null); vt+=dp[v]?dp[v].vol:0; }); volT.push(vt); });
+    const cv=document.getElementById('rep-trend-chart'); if(!cv||typeof Chart==='undefined') return;
+    const dss=[]; vars.forEach((v,i)=>dss.push({type:'line',label:v,data:series[v],borderColor:CHART_COLORS[i%CHART_COLORS.length],backgroundColor:'transparent',borderWidth:2.5,pointRadius:2,pointHoverRadius:4,tension:.3,yAxisID:'y',spanGaps:true}));
+    dss.push({type:'bar',label:'거래량',data:volT,backgroundColor:'rgba(148,163,184,.30)',borderRadius:2,yAxisID:'y1'});
+    _repChart=new Chart(cv.getContext('2d'),{data:{labels:d30.map(d=>d.slice(5)),datasets:dss},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,usePointStyle:true}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.type==='bar'?fmt(c.raw)+'박스':fmt(c.raw)+'원')}}},scales:{y:{position:'left',ticks:{callback:x=>fmt(x)+'원',font:{size:10}},grid:{color:'#f3f4f6'}},y1:{position:'right',grid:{display:false},ticks:{callback:x=>fmtT(x),font:{size:10}}},x:{ticks:{font:{size:9},maxRotation:45},grid:{display:false}}}}});
+}
+
 function renderMarketTop6(containerId,marketData){
     const el=document.getElementById(containerId);
     const _cat=containerId.split('-')[0];
@@ -2456,7 +2562,7 @@ function setPeriodMode(cat,mode,btn){
 function renderReportForDates(cat,dates){
     if(cat!=='hobak') return;
     if(!document.getElementById('report-body')) return;
-    generateReport(cat, dates, _modeTxt(_periodMode[cat]||'day'));
+    renderReportPage(cat, (dates&&dates.length)?dates[dates.length-1]:null);
 }
 
 function generateReport(cat, dates, periodTxt){
