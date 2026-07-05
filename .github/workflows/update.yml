@@ -29,11 +29,18 @@ jobs:
           API_KEY: ${{ secrets.API_KEY }}
         run: python fetch_data.py
 
-      - name: Commit and push data
+      - name: Commit scraper data
         run: |
           git config --global user.name "Dolmang Bot"
           git config --global user.email "bot@dolmang.com"
           echo "$(date +'%Y-%m-%d %H:%M:%S') KST" > last_run.txt
           git add data.json trend.json last_run.txt
-          git commit -m "Update auction data $(date +'%Y-%m-%d %H:%M')"
-          git push
+          git commit -m "Update auction data $(date +'%Y-%m-%d %H:%M')" || echo "no scraper changes"
+          git pull --rebase --autostash origin main || true
+
+      - name: Build and push v2-data (누적)
+        run: |
+          python build_v2data.py
+          git add v2-data.json
+          git commit -m "Accumulate v2-data $(date +'%Y-%m-%d %H:%M')" || echo "no v2-data changes"
+          git push origin main || (git pull --rebase --autostash origin main && git push origin main)
