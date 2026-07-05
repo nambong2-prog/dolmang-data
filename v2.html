@@ -2134,10 +2134,10 @@ async function loadFromGitHub(){
         else { loadDB(null); }   // 404 등 → 빈 상태
     }catch(e){ console.warn('load fail', e); loadDB(null); }
     const _cleaned = cleanupHobak();
-    let _synced={added:0};
-    try{ _synced = await autoSyncFromScraper(); }catch(e){ console.warn('autosync fail',e); }
+    // 자동수집 누적은 서버(build_v2data.py)가 v2-data.json에 직접 하므로 클라이언트에서는 비활성화
+    // (스크래퍼 data.json은 그날치 하루분이라 낙찰일시로 쪼개면 거래일이 어긋남 → 서버에서 거래일자 기준으로 처리)
     rebuildAll();
-    if((_cleaned || (_synced&&_synced.added>0)) && getToken()){ commitToGitHub().catch(()=>{}); }   // 자동정리/자동수집 반영분 깃허브 저장
+    if(_cleaned && getToken()){ commitToGitHub().catch(()=>{}); }   // 잘못 들어간 호박 자동정리분만 깃허브 저장
 }
 const b64 = str => btoa(unescape(encodeURIComponent(str)));
 async function commitToGitHub(){

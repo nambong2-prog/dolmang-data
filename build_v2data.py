@@ -105,7 +105,9 @@ def main():
             cc = category_of(r)  # 제주/품종/키워드 필터로 최종 판정 (노드 카테고리보다 우선)
             if cc is None:
                 continue
-            d = str(r.get("낙찰일시", "") or "")[:10] or ut_date
+            # 도매시장 "거래일"은 전날 오후~당일 새벽에 걸침. 스크래퍼는 trd_clcln_ymd=오늘로 조회하므로
+            # 모든 행을 거래일(ut_date)로 묶는다 (수동 엑셀의 거래일자 기준과 일치). 낙찰일시로 쪼개지 않음.
+            d = ut_date
             bucket = day_rows[cc].setdefault(d, {"total": [], "jtotal": []})
             (bucket["jtotal"] if is_jungga(r) else bucket["total"]).append(v2_row(r))
 
@@ -128,6 +130,13 @@ def main():
     for c in CATS:
         base["cats"].setdefault(c, {"days": {}})
         base["cats"][c].setdefault("days", {})
+
+    # ── 일회성 정리: 날짜 분류 버그로 2026-07-05에 잘못 들어간 auto 데이터 제거 ──
+    for c in CATS:
+        e = base["cats"][c]["days"].get("2026-07-05")
+        if isinstance(e, dict) and e.get("src") == "auto":
+            del base["cats"][c]["days"]["2026-07-05"]
+            print("[build_v2data] 정리: %s 2026-07-05 (오분류 auto) 제거" % c)
 
     # 4) 병합: 수동(src=manual) 날짜는 건너뜀, 나머지는 auto 스냅샷으로 갱신
     changed = 0
