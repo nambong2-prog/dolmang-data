@@ -24,6 +24,13 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      # 전체내역(total_history)에는 이상값 제거 없이 '전건'을 그대로 담는다.
+      # (정리/이상값 제거는 v2 화면에서 처리 → 전체내역은 원본 완전본 유지)
+      - name: Patch total_history to keep raw rows
+        run: |
+          sed -i 's/"total_history": clean_rows/"total_history": list(rows)/' fetch_data.py
+          grep -n '"total_history"' fetch_data.py
+
       - name: Run fetch script
         env:
           API_KEY: ${{ secrets.API_KEY }}
