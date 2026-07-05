@@ -29,7 +29,8 @@ jobs:
       - name: Patch total_history to keep raw rows
         run: |
           sed -i 's/"total_history": clean_rows/"total_history": list(rows)/' fetch_data.py
-          grep -n '"total_history"' fetch_data.py
+          sed -i 's@"규격": spec,@"규격": (str(spec)+" "+str(item.get("pkg_nm") or "")).strip(),@' fetch_data.py
+          grep -n '"total_history"\|"규격": ' fetch_data.py
 
       - name: Run fetch script
         env:
