@@ -2231,12 +2231,15 @@ const rowKey = r => [r.낙찰일시,r.도매시장,r.법인,r.규격,r.경락가
 
 function ingestRows(allRows, srcTag){
     let added=0, skipped=0; const touched={};
+    const _reset=new Set();   // 수동 업로드: 이 업로드에서 처음 만난 (cat,date)를 1회 비움(교체)
     allRows.forEach(r=>{
         const cat=categoryOf(r); if(!cat){ skipped++; return; }
         const d=r.date||'미상';
         DB[cat][d]=DB[cat][d]||{ archived:false, total:[], jtotal:[] };
         const e=DB[cat][d];
         if(e.archived){ e.archived=false; e.total=e.total||[]; e.jtotal=e.jtotal||[]; }
+        // 수동 업로드는 그날 데이터를 '교체'한다: 기존(자동수집 등) 데이터를 첫 접촉 시 비우고 이 파일 내용으로 대체
+        if(srcTag==='manual'){ const _rk=cat+'|'+d; if(!_reset.has(_rk)){ e.total=[]; e.jtotal=[]; _reset.add(_rk); } }
         const isJ=(r.매매구분||'').includes('정가')||(r.매매구분||'').includes('수의');
         const rec={ 품목:r.품목, 품종:r.품종, 도매시장:r.도매시장, 법인:r.법인, 원산지:r.원산지,
                     규격:r.규격, 경락가:r.경락가, 거래량:r.거래량, 낙찰일시:r.낙찰일시 };
