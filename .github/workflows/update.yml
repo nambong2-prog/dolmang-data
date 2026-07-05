@@ -2,8 +2,9 @@ name: Dolmang Data Sync
 
 on:
   schedule:
-    - cron: '0 0 * * *'
-    - cron: '0 4 * * *'
+    - cron: '0 22 * * *'   # KST 07:00 (UTC 22:00, 전날)
+    - cron: '0 1 * * *'    # KST 10:00 (UTC 01:00)
+    - cron: '0 14 * * *'   # KST 23:00 (UTC 14:00)
   workflow_dispatch:
 
 jobs:
