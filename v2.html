@@ -232,6 +232,7 @@
 
 
 /* ===== 출하판단 히트맵 ===== */
+.mk-jump{cursor:pointer;text-decoration:underline;text-underline-offset:2px;color:inherit}
 .hm-btn{padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer}
 .hm-btn.on{background:#c2410c;color:#fff;border-color:#c2410c}
 .hm-card{border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin-bottom:4px}
@@ -1192,7 +1193,7 @@ function renderHeatmap(cat){
         });
         html+='<div class="hm-card"><div class="hm-title">'+vr+' <span class="hm-sub">'+mkts.length+'개 시장 · '+specs.length+'개 규격 · '+_heatModeTxt()+' · 색 진할수록 高 · 고가%=최고가 근처 물량비중</span></div><div class="scroll-x"><table class="hm-table"><thead><tr><th class="hm-mk">시장</th>'+specs.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>';
         mkts.forEach(name=>{
-            html+='<tr><td class="hm-mk">'+name+'<span class="hm-q">'+fmt(mktQty[name])+'박스</span></td>';
+            html+='<tr><td class="hm-mk">'+_mkLink(cat,name)+'<span class="hm-q">'+fmt(mktQty[name])+'박스</span></td>';
             specs.forEach(x=>{
                 const c=cell[name][x];
                 if(c&&c.price>0){ const _dim=(c.thick<15)?'opacity:.45;':''; const _warn=(c.qty<240)?'⚠':''; html+='<td style="'+_dim+'background:'+bg(c.price)+';color:'+fg(c.price)+'"><b>'+fmt(c.price)+'</b><span class="hm-cq">'+_warn+fmt(c.qty)+'박스 · 고가'+c.thick+'%</span></td>'; }
@@ -1280,7 +1281,7 @@ function renderReportPage(cat, anchor){
         const mx=list[0].price, mn=Math.min.apply(null,list.map(x=>x.price));
         C+='<div class="rp-mv">'+v+'</div><div class="rp-mrows">';
         list.forEach((m,i)=>{ const w=Math.max(10,Math.round((m.price-mn*0.9)/((mx-mn*0.9)||1)*100)); const warn=m.vol<240?'<span class="rp-warn"> ⚠</span>':'';
-            C+='<div class="rp-mrow"><span class="rp-mk">'+(i+1)+'. '+m.시장명+'</span><span class="rp-mbar"><i style="width:'+w+'%"></i></span><span class="rp-mp">'+fmt(m.price)+'원</span><span class="rp-mt">고가'+m.thick+'%·'+fmt(m.vol)+'박스'+warn+'</span></div>';
+            C+='<div class="rp-mrow"><span class="rp-mk">'+(i+1)+'. '+_mkLink(cat,m.시장명)+'</span><span class="rp-mbar"><i style="width:'+w+'%"></i></span><span class="rp-mp">'+fmt(m.price)+'원</span><span class="rp-mt">고가'+m.thick+'%·'+fmt(m.vol)+'박스'+warn+'</span></div>';
         });
         C+='</div>';
     });
@@ -1293,7 +1294,7 @@ function renderReportPage(cat, anchor){
         for(const c of order){ if(remain<=0) break; const g=Math.min(remain,c.cap); if(g<=0) continue; plan.push({name:c.name,give:g,price:c.price}); remain-=g; }
         if(!plan.length) return;
         const tot=plan.reduce((s,p)=>s+p.give,0), rev=plan.reduce((s,p)=>s+p.give*p.price,0), wa=tot?Math.round(rev/tot):0;
-        D+='<div class="rp-alloc"><div class="rp-av">'+v+' 240박스 → 가중 <b>'+fmt(wa)+'원</b> · 예상 <b>'+fmt(rev)+'원</b>'+(remain>0?' <span class="rp-warn">남은 '+fmt(remain)+'박스 소화력부족</span>':'')+'</div><div class="rp-achips">'+plan.map((p,i)=>'<span class="rp-achip"><b>'+(i+1)+'</b> '+p.name+' '+fmt(p.give)+'박스</span>').join('')+'</div></div>';
+        D+='<div class="rp-alloc"><div class="rp-av">'+v+' 240박스 → 가중 <b>'+fmt(wa)+'원</b> · 예상 <b>'+fmt(rev)+'원</b>'+(remain>0?' <span class="rp-warn">남은 '+fmt(remain)+'박스 소화력부족</span>':'')+'</div><div class="rp-achips">'+plan.map((p,i)=>'<span class="rp-achip"><b>'+(i+1)+'</b> '+_mkLink(cat,p.name)+' '+fmt(p.give)+'박스</span>').join('')+'</div></div>';
     });
     D+='</div>';
     body.innerHTML=A+B+C+D;
@@ -1494,6 +1495,7 @@ const totalData={};
 const _sortState = {};
 
 function ea(v){ return String(v==null?'':v).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function _mkLink(cat,mkt){ return `<span class="mk-jump" onclick="jumpToTotal('${cat}','','','${ea(mkt)}','')">${mkt} \ud83d\udd0e</span>`; }
 function jumpToTotal(cat, variety, spec, market, corp){
     // 전체내역 서브탭으로 전환
     const btn=[...document.querySelectorAll('#tab-'+cat+' .sub-btn')].find(b=>((b.getAttribute('onclick')||'').includes("'total'")));
